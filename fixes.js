@@ -1,5 +1,5 @@
 ﻿(function () {
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
+  const DEFAULT_API_URL = "hhttps://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
 
   if (!localStorage.getItem("GAS_API_URL")) {
     localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
