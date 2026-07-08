@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตั้งค่ารายการ - ระบบตรวจนับและตัดจ่ายยาเสพติดให้โทษ</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="icon-app.png">
+  <link rel="apple-touch-icon" href="icon-app.png">
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <!-- DataTables CSS -->
+  <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navbar Placeholder -->
+  <div id="navbar-placeholder"></div>
+
+  <div class="main-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="mb-1 text-primary"><i class="fas fa-sliders me-2"></i>ตั้งค่ารายการและ Stock Ward</h2>
+        <p class="text-secondary mb-0">กำหนดรายชื่อยาและจำนวนสต็อกมาตรฐานประจำหอผู้ป่วย (Stock Ward) เพื่อใช้เป็นฐานตรวจสอบความถูกต้องประจำเวร</p>
+      </div>
+      <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#drugModal" id="btn-add-drug">
+        <i class="fas fa-plus me-1"></i> เพิ่มรายการยา
+      </button>
+    </div>
+
+    <!-- Drug Master Data Table -->
+    <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
+      <div class="table-responsive">
+        <table id="drug-table" class="table table-hover align-middle w-100 mb-0 stack-table-mobile">
+          <thead>
+            <tr>
+              <th>รหัสยา</th>
+              <th>ชื่อยา</th>
+              <th>ความแรง</th>
+              <th>หน่วยนับ</th>
+              <th class="text-center">Stock Ward (เป้าหมายนับเวร)</th>
+              <th class="text-center">การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="drug-tbody">
+            <!-- ข้อมูลจะโหลดเข้าด้วย JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: เพิ่ม/แก้ไข ข้อมูลยาเสพติด -->
+  <div class="modal fade" id="drugModal" tabindex="-1" aria-labelledby="drugModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+        <div class="modal-header" style="background-color: var(--primary-color); color: white;">
+          <h5 class="modal-title" id="drugModalLabel"><i class="fas fa-prescription-bottle-medical me-2"></i>ข้อมูลยาเสพติด</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="drug-form">
+          <input type="hidden" id="drug-id-input">
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <label for="drug-name-master" class="form-label">ชื่อยาเสพติด</label>
+                <input type="text" class="form-control" id="drug-name-master" placeholder="เช่น Fentanyl, Pethidine, Morphine" required>
+              </div>
+              <div class="col-12">
+                <label for="drug-strength-master" class="form-label">ความแรง</label>
+                <input type="text" class="form-control" id="drug-strength-master" placeholder="เช่น 10 mg/mL, 0.1 mg/2mL" required>
+              </div>
+              <div class="col-md-6">
+                <label for="drug-unit-master" class="form-label">หน่วยนับ</label>
+                <input type="text" class="form-control" id="drug-unit-master" placeholder="เช่น Amp, Vial" required>
+              </div>
+              <div class="col-md-6">
+                <label for="stock-ward-master" class="form-label">Stock Ward (จำนวนมาตรฐาน)</label>
+                <input type="number" min="0" step="any" class="form-control" id="stock-ward-master" placeholder="เช่น 10" required>
+                <div class="form-text small">ยอดรวมตรวจนับที่ต้องรักษาไว้ประจำตึก</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light p-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary-custom"><i class="fas fa-save me-1"></i>บันทึกข้อมูล</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loading-spinner-overlay" class="d-none">
+    <div class="spinner-border spinner-custom" role="status">
+      <span class="visually-hidden">กำลังโหลด...</span>
+    </div>
+  </div>
+
+  <!-- JQuery & Bootstrap & Datatables & Sweetalert2 -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+  <script src="fixes.js"></script>
+</body>
+</html>

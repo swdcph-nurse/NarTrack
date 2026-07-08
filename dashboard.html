@@ -1,0 +1,153 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แดชบอร์ด - ระบบตรวจนับและตัดจ่ายยาเสพติด</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="icon-app.png">
+  <link rel="apple-touch-icon" href="icon-app.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="main-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+      <div>
+        <h2 class="mb-1 text-primary"><i class="fas fa-chart-pie me-2"></i>แดชบอร์ดสรุปข้อมูล</h2>
+        <p class="text-secondary mb-0">ข้อมูลภาพรวมการบริหารคลังยาเสพติดให้พร้อมใช้งานและอัปเดตตามเวรปัจจุบัน</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-secondary btn-sm" id="btn-shiftcount-shortcut">
+          <i class="fas fa-clipboard-check me-1"></i> ตรวจนับยา
+        </button>
+        <button class="btn btn-primary-custom btn-sm" id="btn-refresh-dashboard">
+          <i class="fas fa-rotate me-1"></i> รีเฟรชข้อมูล
+        </button>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4 shiftcount-shortcut-card">
+      <div class="card-body p-4 p-lg-5 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 text-white">
+        <div>
+          <div class="text-uppercase small fw-semibold opacity-75">ทางลัดสำหรับพยาบาล</div>
+          <h3 class="mb-2 text-white">เปิดหน้าตรวจนับยาได้ทันที</h3>
+          <p class="mb-0 text-white-75">ปุ่มลัดนี้จะพาไปยัง Batch Check-in Table สำหรับตรวจนับตามเวรปฏิบัติการโดยตรง</p>
+        </div>
+        <a href="shiftcount.html" class="btn btn-light btn-lg px-4 py-3 fw-semibold shadow-sm">
+          <i class="fas fa-clipboard-check me-2"></i> ตรวจนับยา
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="stat-card primary">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">ยาทั้งหมดในบัญชี</div>
+              <h3 class="mt-1 mb-0" id="stat-total-drugs">0</h3>
+            </div>
+            <div class="icon-box">
+              <i class="fas fa-capsules"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card success">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">รายการสต็อก (LOT) ทั้งหมด</div>
+              <h3 class="mt-1 mb-0" id="stat-total-lots">0</h3>
+            </div>
+            <div class="icon-box">
+              <i class="fas fa-layer-group"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card warning">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">ใกล้หมดอายุ (≤30 วัน)</div>
+              <h3 class="mt-1 mb-0 text-warning" id="stat-near-expiry">0</h3>
+            </div>
+            <div class="icon-box">
+              <i class="fas fa-triangle-exclamation"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card danger">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">ยอดตัดจ่ายวันนี้</div>
+              <h3 class="mt-1 mb-0 text-danger" id="stat-today-disbursement">0</h3>
+            </div>
+            <div class="icon-box">
+              <i class="fas fa-hand-holding-medical"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 12px;">
+          <h4 class="mb-3 text-primary"><i class="fas fa-chart-bar me-2"></i>ยอดคงเหลือตามชนิดยา</h4>
+          <div style="position: relative; height:320px; width:100%">
+            <canvas id="stockChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 12px;">
+          <h4 class="mb-3 text-primary"><i class="fas fa-clock me-2"></i>รายการใกล้หมดอายุที่ต้องเฝ้าระวัง</h4>
+          <div class="table-responsive" style="max-height: 320px; box-shadow: none;">
+            <table class="table table-hover align-middle mb-0 stack-table-mobile">
+              <thead>
+                <tr>
+                  <th>ชื่อยา</th>
+                  <th>LOT</th>
+                  <th class="text-center">วันคงเหลือ</th>
+                </tr>
+              </thead>
+              <tbody id="expiry-list-tbody">
+                <tr>
+                  <td colspan="3" class="text-center text-muted py-4">ไม่พบข้อมูลใกล้หมดอายุ</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-spinner-overlay" class="d-none">
+    <div class="spinner-border spinner-custom" role="status">
+      <span class="visually-hidden">กำลังโหลด...</span>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+  <script src="fixes.js"></script>
+</body>
+</html>

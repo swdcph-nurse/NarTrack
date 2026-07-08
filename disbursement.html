@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตัดจ่ายยา - ระบบตรวจนับและตัดจ่ายยาเสพติดให้โทษ</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="icon-app.png">
+  <link rel="apple-touch-icon" href="icon-app.png">
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <!-- DataTables CSS -->
+  <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navbar Placeholder -->
+  <div id="navbar-placeholder"></div>
+
+  <div class="main-wrapper">
+    <div class="row g-4">
+      
+      <!-- Disbursement Form Card -->
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 12px;">
+          <h3 class="mb-3 text-primary"><i class="fas fa-file-medical me-2"></i>บันทึกตัดจ่ายยาเสพติด</h3>
+          <p class="text-secondary small mb-4">หักลบจำนวนคงคลังยาเสพติดอัตโนมัติรายบุคคลคนไข้</p>
+          
+          <form id="disburse-form">
+            <div class="row g-3">
+              <!-- เลือกรวม (ยาและล็อต) -->
+              <div class="col-12">
+                <label for="disburse-stock-select" class="form-label">เลือกรายการยาและ LOT (มีจำนวนคงเหลือ)</label>
+                <select class="form-select" id="disburse-stock-select" required>
+                  <option value="" disabled selected>-- เลือกยาและล็อตจากคลัง --</option>
+                </select>
+                <div class="form-text text-secondary" id="stock-remain-hint" style="font-size: 0.85rem;">คงเหลือในระบบ: - แอมป์/ขวด</div>
+              </div>
+              <div class="col-12">
+                <label for="patient-name-input" class="form-label">ชื่อ-นามสกุลผู้ป่วย</label>
+                <input type="text" class="form-control" id="patient-name-input" placeholder="กรอกชื่อ-นามสกุลผู้ป่วย" required>
+              </div>
+              <div class="col-12">
+                <label for="patient-hn-input" class="form-label">HN (เลขประจำตัวผู้ป่วย)</label>
+                <input type="text" class="form-control" id="patient-hn-input" placeholder="เช่น HN64XXXXX" required>
+              </div>
+              <div class="col-md-6">
+                <label for="disburse-qty-input" class="form-label">จำนวนที่จ่าย</label>
+                <input type="number" min="1" step="any" class="form-control" id="disburse-qty-input" placeholder="จำนวนแอมป์/ขวด" required>
+              </div>
+              <div class="col-md-6">
+                <label for="disburse-user-input" class="form-label">ผู้จ่ายยา (พยาบาล)</label>
+                <input type="text" class="form-control" id="disburse-user-input" placeholder="กรอกชื่อผู้จ่ายยา" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary-custom w-100 mt-4">
+              <i class="fas fa-paper-plane me-2"></i>ยืนยันตัดจ่ายยาเสพติด
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- History Table Card -->
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 12px;">
+          <h3 class="mb-3 text-primary"><i class="fas fa-history me-2"></i>ประวัติการตัดจ่ายยาเสพติดวันนี้</h3>
+          <p class="text-secondary small mb-4">รายการบันทึกตัดจ่ายยาประจำเวรและข้อมูลผู้ป่วย</p>
+          
+          <div class="table-responsive" style="box-shadow: none;">
+            <table id="disbursement-table" class="table table-hover align-middle w-100 mb-0 stack-table-mobile">
+              <thead>
+                <tr>
+                  <th>รหัสการจ่าย</th>
+                  <th>ชื่อยา</th>
+                  <th>LOT</th>
+                  <th>ผู้ป่วย (HN)</th>
+                  <th>จำนวนจ่าย</th>
+                  <th>ผู้จ่าย</th>
+                  <th>วันเวลาบันทึก</th>
+                </tr>
+              </thead>
+              <tbody id="disbursement-tbody">
+                <!-- ข้อมูลจะโหลดเข้าด้วย JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loading-spinner-overlay" class="d-none">
+    <div class="spinner-border spinner-custom" role="status">
+      <span class="visually-hidden">กำลังโหลด...</span>
+    </div>
+  </div>
+
+  <!-- JQuery & Bootstrap & Datatables & Sweetalert2 -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+  <script src="fixes.js"></script>
+</body>
+</html>
