@@ -1,5 +1,5 @@
-﻿(function () {
-  const DEFAULT_API_URL = "hhttps://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
+(function () {
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
 
   if (!localStorage.getItem("GAS_API_URL")) {
     localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
@@ -860,15 +860,19 @@
 
     const rowsHtml = data.map(item => {
       const isCorrect = item.Result === "ถูกต้อง";
+      const alertClass = isCorrect ? "" : "text-danger fw-bold";
+      const rowStyle = isCorrect ? "" : ' style="color:#dc3545;font-weight:700;"';
+      const remark = item.Remark || item.Reason || item.Note || "";
       return `
-        <tr>
+        <tr${rowStyle}>
           <td class="text-center">${escapeHtml(formatShortDate(item.Date))}</td>
           <td class="text-center"><span class="badge bg-primary">${escapeHtml(item.Shift || "-")}</span></td>
           <td>${escapeHtml(item.DrugName || "-")}</td>
-          <td class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
-          <td class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
-          <td class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+          <td class="text-end ${alertClass}">${escapeHtml(item.AmpRemain ?? 0)}</td>
+          <td class="text-end ${alertClass}">${escapeHtml(item.EmptyAmp ?? 0)}</td>
+          <td class="text-end fw-semibold ${alertClass}">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
           <td class="text-center ${isCorrect ? "text-success" : "text-danger fw-bold"}">${escapeHtml(item.Result || "-")}</td>
+          <td class="${alertClass}">${escapeHtml(remark || "-")}</td>
           <td>${escapeHtml(item.User || "-")}</td>
         </tr>
       `;
@@ -885,6 +889,7 @@
             <th>แอมป์เปล่า</th>
             <th>ยอดรวม</th>
             <th>ผลตรวจสอบ</th>
+            <th>หมายเหตุ</th>
             <th>ผู้บันทึก</th>
           </tr>
         </thead>
@@ -1350,8 +1355,7 @@
     }
 
     if (actionBtn) {
-      // ล็อกปุ่มบันทึกไว้เมื่อยอดแอมป์ดีที่กรอกไม่ตรงกับยอดคงเหลือจริงในระบบ
-      actionBtn.disabled = !filled || !ampMatchesSystem;
+      actionBtn.disabled = !filled;
       actionBtn.innerHTML = row.dataset.saved === "1"
         ? '<i class="fas fa-pen-to-square me-1"></i>แก้ไข'
         : '<i class="fas fa-floppy-disk me-1"></i>บันทึก';
@@ -1390,14 +1394,14 @@
 
     let alertType = "info";
     let alertMessage = "พร้อมตรวจนับต่อได้ทันที";
-    const disabled = total === 0 || pending > 0 || mismatch > 0 || window.__shiftCountLoadingState;
+    const disabled = total === 0 || pending > 0 || window.__shiftCountLoadingState;
 
     if (pending > 0) {
       alertType = "warning";
       alertMessage = `ยังมี ${pending} รายการที่ยังไม่นับครบ ระบบจะไม่อนุญาตให้ส่งยอดจนกว่าจะกรอกครบทุกแถว`;
     } else if (mismatch > 0) {
       alertType = "danger";
-      alertMessage = `พบ ${mismatch} รายการที่ผลรวมไม่ตรงกับยอดเป้าหมาย กรุณาตรวจทานก่อนส่งเวร`;
+      alertMessage = `พบ ${mismatch} รายการที่ยอดขาด/เกินหรือไม่ตรงกับระบบ ต้องยืนยันและระบุเหตุผลก่อนบันทึก`;
     } else if (total > 0) {
       alertType = "success";
       alertMessage = "ครบทุกแถวและผลตรวจสอบตรงทั้งหมด สามารถบันทึกส่งตรวจเช็คยอดได้";
@@ -1426,14 +1430,50 @@
       Items: rows.map(row => ({
         DrugID: row.dataset.drugId,
         AmpRemain: parseFloat(row.querySelector(".amp-remain-input")?.value || "0"),
-        EmptyAmp: parseFloat(row.querySelector(".empty-amp-input")?.value || "0")
+        EmptyAmp: parseFloat(row.querySelector(".empty-amp-input")?.value || "0"),
+        Remark: row.dataset.match === "1" ? "" : (row.dataset.reason || "")
       }))
     };
   }
 
-  async function saveShiftBatchRows(rowList) {
+  async function requestShiftMismatchReason(rows) {
+    const mismatchRows = (Array.isArray(rows) ? rows : []).filter(row => row.dataset.completed === "1" && row.dataset.match !== "1");
+    if (mismatchRows.length === 0) return "";
+
+    const detailHtml = mismatchRows.slice(0, 8).map(row => {
+      const name = row.querySelector('[data-label="ชื่อยา"] .fw-semibold')?.textContent || row.dataset.drugId || "-";
+      const result = row.querySelector(".count-result-cell")?.textContent || "ยอดไม่ตรง";
+      return `<li class="text-start">${escapeHtml(name)}: <span class="text-danger fw-semibold">${escapeHtml(result)}</span></li>`;
+    }).join("");
+    const extraHtml = mismatchRows.length > 8 ? `<div class="small text-muted mt-2">และอีก ${escapeHtml(mismatchRows.length - 8)} รายการ</div>` : "";
+
+    const response = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันการบันทึกยอดขาด/เกิน",
+      html: `<div class="text-start mb-2">พบรายการที่ยอดไม่ตรงกับระบบ กรุณาระบุเหตุผลก่อนบันทึก</div><ul class="mb-2 ps-3">${detailHtml}</ul>${extraHtml}`,
+      input: "textarea",
+      inputLabel: "เหตุผล / หมายเหตุ",
+      inputPlaceholder: "เช่น พบแอมป์แตก, รอปรับปรุงรายการ, นับซ้ำแล้วพบยอดเกิน...",
+      inputAttributes: { "aria-label": "เหตุผลการบันทึกยอดขาดหรือเกิน" },
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันและบันทึก",
+      cancelButtonText: "ยกเลิก",
+      inputValidator: value => {
+        if (!String(value || "").trim()) {
+          return "กรุณาระบุเหตุผลก่อนบันทึก";
+        }
+        return null;
+      }
+    });
+
+    if (!response.isConfirmed) return null;
+    return String(response.value || "").trim();
+  }
+
+  async function saveShiftBatchRows(rowList, mismatchReason) {
     const rows = Array.isArray(rowList) ? rowList : [];
     if (rows.length === 0) return;
+    const reason = mismatchReason || "";
 
     const payload = {
       Date: document.getElementById("count-date-input")?.value || getBangkokDateString(new Date()),
@@ -1442,7 +1482,8 @@
       Items: rows.map(row => ({
         DrugID: row.dataset.drugId,
         AmpRemain: parseFloat(row.querySelector(".amp-remain-input")?.value || "0"),
-        EmptyAmp: parseFloat(row.querySelector(".empty-amp-input")?.value || "0")
+        EmptyAmp: parseFloat(row.querySelector(".empty-amp-input")?.value || "0"),
+        Remark: row.dataset.match === "1" ? "" : (reason || row.dataset.reason || "")
       }))
     };
 
@@ -1451,7 +1492,7 @@
       const response = await GASApi.saveShiftCountBatch(payload);
       showLoading(false);
       if (!response.success) {
-        window.renderStockTable([]);
+        Swal.fire("บันทึกไม่สำเร็จ", response.message || "กรุณาตรวจสอบข้อมูลอีกครั้ง", "error");
         return;
       }
 
@@ -1476,21 +1517,24 @@
     tbody.closest("table")?.classList.add("stack-table-mobile");
     const rows = Array.isArray(historyList) ? historyList : [];
     if (rows.length === 0) {
-      tbody.innerHTML = emptyTableRowHtml(8, "ยังไม่มีประวัติการตรวจนับ");
+      tbody.innerHTML = emptyTableRowHtml(9, "ยังไม่มีประวัติการตรวจนับ");
       return;
     }
 
     tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
       const isCorrect = String(item.Result || "") === "ถูกต้อง";
+      const alertClass = isCorrect ? "" : "text-danger fw-semibold";
+      const remark = item.Remark || item.Reason || item.Note || "";
       return `
-        <tr>
+        <tr class="${isCorrect ? "" : "table-danger"}">
           <td data-label="วันที่">${escapeHtml(formatThaiDate(item.Date))}</td>
           <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
           <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")}</td>
-          <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
-          <td data-label="แอมป์เปล่า" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
-          <td data-label="ยอดรวม" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
+          <td data-label="แอมป์ดี" class="text-end ${alertClass}">${escapeHtml(item.AmpRemain ?? 0)}</td>
+          <td data-label="แอมป์เปล่า" class="text-end ${alertClass}">${escapeHtml(item.EmptyAmp ?? 0)}</td>
+          <td data-label="ยอดรวม" class="text-end fw-semibold ${alertClass}">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
           <td data-label="ผลตรวจสอบ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "✓ ครบถ้วน" : "✗ ไม่ตรง"}</td>
+          <td data-label="หมายเหตุ" class="${alertClass}">${escapeHtml(remark || "-")}</td>
           <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
         </tr>
       `;
@@ -1531,6 +1575,7 @@
       const saved = map.get(String(item.DrugID || ""));
       const ampRemain = saved ? saved.AmpRemain ?? "" : "";
       const emptyAmp = saved ? saved.EmptyAmp ?? "" : "";
+      const savedRemark = saved ? (saved.Remark || saved.Reason || saved.Note || "") : "";
       const target = Number(item.StockWard || 0);
       const drugId = String(item.DrugID || "");
       const expectedRemain = expectedRemainMap.has(drugId) ? expectedRemainMap.get(drugId) : 0;
@@ -1554,7 +1599,7 @@
               : `<span class="text-danger fw-semibold">✗ ยาเกิน ${diff} ${escapeHtml(unit)}</span>`;
 
       return `
-        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}" data-expected-remain="${escapeHtml(expectedRemain)}">
+        <tr data-drug-id="${escapeHtml(item.DrugID || "")}" data-target="${escapeHtml(target)}" data-unit="${escapeHtml(unit)}" data-saved="${hasSaved ? "1" : "0"}" data-expected-remain="${escapeHtml(expectedRemain)}" data-reason="${escapeHtml(savedRemark)}">
           <td data-label="สถานะ" class="count-status-cell">${statusHtml}</td>
           <td data-label="ชื่อยา">
             <div class="fw-semibold">${escapeHtml(item.DrugName || "-")}</div>
@@ -1569,7 +1614,7 @@
           <td data-label="ยอดรวมที่นับได้" class="count-total-cell text-center fw-bold">${total === null ? "-" : escapeHtml(total)}</td>
           <td data-label="ผลตรวจสอบ" class="count-result-cell text-center">${resultHtml}</td>
           <td data-label="Action" class="text-center">
-            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1" ${filled && !ampMatchesSystem ? "disabled" : ""}>
+            <button type="button" class="btn btn-primary-custom btn-sm row-save-btn" tabindex="-1" ${filled ? "" : "disabled"}>
               <i class="fas fa-floppy-disk me-1"></i>${hasSaved ? "แก้ไข" : "บันทึก"}
             </button>
           </td>
@@ -1618,7 +1663,7 @@
         }
       });
 
-      tbody.addEventListener("click", function (event) {
+      tbody.addEventListener("click", async function (event) {
         const button = event.target.closest(".row-save-btn");
         if (!button) return;
         const row = button.closest("tr[data-drug-id]");
@@ -1627,11 +1672,11 @@
           Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบก่อนบันทึกแถวนี้", "warning");
           return;
         }
-        if (row.dataset.ampMismatch === "1") {
-          Swal.fire("แจ้งเตือน", "ยอดแอมป์ดี (พร้อมใช้) ไม่ตรงกับยอดคงเหลือจริงในระบบ กรุณาตรวจสอบก่อนบันทึก", "warning");
+        const reason = await requestShiftMismatchReason([row]);
+        if (reason === null) {
           return;
         }
-        saveShiftBatchRows([row]);
+        saveShiftBatchRows([row], reason);
       });
     }
 
@@ -1742,15 +1787,11 @@
           Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบทุกแถวก่อนส่งยอด", "warning");
           return;
         }
-        if (mismatchRows.length > 0) {
-          const ampMismatchRows = mismatchRows.filter(row => row.dataset.ampMismatch === "1");
-          const message = ampMismatchRows.length > 0
-            ? "พบรายการที่ยอดแอมป์ดี (พร้อมใช้) ไม่ตรงกับยอดคงเหลือจริงในระบบ กรุณาตรวจสอบก่อนส่งยอด"
-            : "ยังมีรายการที่ผลตรวจไม่ตรงกับยอดเป้าหมาย";
-          Swal.fire("แจ้งเตือน", message, "warning");
+        const reason = await requestShiftMismatchReason(mismatchRows);
+        if (reason === null) {
           return;
         }
-        await saveShiftBatchRows(rows);
+        await saveShiftBatchRows(rows, reason);
       });
     }
 
@@ -1795,18 +1836,34 @@
       window.__dashboardChart.destroy();
     }
 
-    const rows = Array.isArray(stockList) ? stockList : [];
-    const topRows = rows
-      .filter(item => parseFloat(item.QtyRemain || 0) > 0)
-      .sort((a, b) => parseFloat(b.QtyRemain || 0) - parseFloat(a.QtyRemain || 0))
-      .slice(0, 8);
     const masterRows = Array.isArray(window.__drugMasterCache) && window.__drugMasterCache.length ? window.__drugMasterCache : getDrugMasterCache();
     const masterMap = new Map(masterRows.map(item => [String(item.DrugID || ""), item]));
+    const rows = Array.isArray(stockList) ? stockList : [];
+    const grouped = new Map();
+    rows.forEach(item => {
+      const remain = parseFloat(item.QtyRemain || 0);
+      if (!Number.isFinite(remain) || remain <= 0) return;
+
+      const master = masterMap.get(String(item.DrugID || ""));
+      const drugName = master?.DrugName || item.DrugName || item.DrugID || "-";
+      const strength = master?.Strength || item.Strength || "";
+      const key = `${String(drugName).trim().toLowerCase()}|${String(strength).trim().toLowerCase()}`;
+      const current = grouped.get(key) || {
+        DrugName: drugName,
+        Strength: strength,
+        QtyRemain: 0
+      };
+      current.QtyRemain += remain;
+      grouped.set(key, current);
+    });
+    const topRows = Array.from(grouped.values())
+      .sort((a, b) => parseFloat(b.QtyRemain || 0) - parseFloat(a.QtyRemain || 0))
+      .slice(0, 8);
 
     window.__dashboardChart = new Chart(canvas, {
       type: "bar",
       data: {
-        labels: topRows.map(item => (masterMap.get(String(item.DrugID || ""))?.DrugName || item.DrugName || item.DrugID || "-")),
+        labels: topRows.map(item => `${item.DrugName || "-"}${item.Strength ? " " + item.Strength : ""}`),
         datasets: [{
           label: "คงเหลือ",
           data: topRows.map(item => parseFloat(item.QtyRemain || 0)),
