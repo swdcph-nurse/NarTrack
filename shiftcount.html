@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ตรวจนับยา - ระบบตรวจนับและตัดจ่ายยาเสพติด</title>
+  <title>ตรวจนับยาประจำเวร - ระบบยาเสพติด</title>
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,153 +14,186 @@
   <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .shift-table-compact th, 
+    .shift-table-compact td {
+      padding: 0.4rem 0.5rem !important;
+      font-size: 0.86rem;
+      vertical-align: middle;
+    }
+    .shift-input-num {
+      width: 85px;
+      text-align: center;
+      font-weight: 600;
+      padding: 0.25rem 0.4rem !important;
+      font-size: 0.9rem;
+    }
+    .shift-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      gap: 0.4rem;
+    }
+  </style>
 </head>
 <body>
 
   <div id="navbar-placeholder"></div>
 
-  <div class="main-wrapper">
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-      <div>
-        <h2 class="mb-1 text-primary"><i class="fas fa-clipboard-check me-2"></i>ตรวจนับยาประจำเวร</h2>
-        <p class="text-secondary mb-0" id="shift-today-label">วันที่ปัจจุบัน: -</p>
+  <div class="main-wrapper py-3 px-3 px-lg-4">
+    
+    <!-- Top Header Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <h4 class="mb-0 text-primary fw-bold"><i class="fas fa-clipboard-check me-2"></i>ตรวจนับยาประจำเวร</h4>
+        <span class="badge bg-light text-secondary border small px-2 py-1" id="shift-today-label">วันที่: -</span>
       </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a href="dashboard.html" class="btn btn-outline-secondary btn-lg">
-          <i class="fas fa-house me-1"></i>กลับแดชบอร์ด
-        </a>
-        <button type="button" class="btn btn-primary-custom btn-lg" id="btn-refresh-batch">
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-refresh-batch">
           <i class="fas fa-rotate me-1"></i> โหลดข้อมูลใหม่
         </button>
+        <a href="dashboard.html" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-house me-1"></i> แดชบอร์ด
+        </a>
       </div>
     </div>
 
     <form id="shift-count-form" autocomplete="off">
-      <div class="card border-0 shadow-sm shiftcount-hero mb-4">
-        <div class="card-body p-4 p-lg-5 text-white">
-          <div class="row g-4 align-items-end">
-            <div class="col-lg-7">
-              <div class="text-uppercase small fw-semibold opacity-75 mb-2">เลือกเวรปฏิบัติการ</div>
-              <div class="btn-group shift-selector w-100 flex-wrap" role="group" aria-label="เลือกเวร">
-                <input type="radio" class="btn-check" name="shift-select" id="shift-morning" value="เช้า" checked>
-                <label class="btn btn-outline-light btn-lg flex-fill" for="shift-morning">เวรเช้า</label>
-                <input type="radio" class="btn-check" name="shift-select" id="shift-afternoon" value="บ่าย">
-                <label class="btn btn-outline-light btn-lg flex-fill" for="shift-afternoon">เวรบ่าย</label>
+      
+      <!-- Compact Shift Control Bar -->
+      <div class="card border-0 shadow-sm p-2 px-3 mb-2 bg-white rounded-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-lg-5 col-md-12">
+            <div class="d-flex align-items-center gap-2">
+              <span class="small fw-bold text-secondary text-nowrap"><i class="fas fa-clock text-primary me-1"></i>เวร:</span>
+              <div class="btn-group btn-group-sm w-100" role="group" aria-label="เลือกเวร">
                 <input type="radio" class="btn-check" name="shift-select" id="shift-night" value="ดึก">
-                <label class="btn btn-outline-light btn-lg flex-fill" for="shift-night">เวรดึก</label>
+                <label class="btn btn-outline-primary" for="shift-night"><i class="fas fa-moon me-1"></i>เวรดึก (00-08)</label>
+                <input type="radio" class="btn-check" name="shift-select" id="shift-morning" value="เช้า">
+                <label class="btn btn-outline-primary" for="shift-morning"><i class="fas fa-sun me-1"></i>เวรเช้า (08-16)</label>
+                <input type="radio" class="btn-check" name="shift-select" id="shift-afternoon" value="บ่าย">
+                <label class="btn btn-outline-primary" for="shift-afternoon"><i class="fas fa-cloud-sun me-1"></i>เวรบ่าย (16-24)</label>
               </div>
-              <div class="form-text text-white-50 mt-3">เปลี่ยนวันที่หรือเวรแล้วระบบจะดึงสถานะการตรวจนับของชุดนั้นขึ้นมาให้ทันที</div>
             </div>
-            <div class="col-lg-2 col-md-6">
-              <label for="count-date-input" class="form-label text-white">วันที่ตรวจนับ</label>
-              <input type="date" class="form-control form-control-lg" id="count-date-input">
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="d-flex align-items-center gap-2">
+              <span class="small fw-bold text-secondary text-nowrap"><i class="fas fa-calendar-day text-primary me-1"></i>วันที่:</span>
+              <input type="date" class="form-control form-control-sm" id="count-date-input">
             </div>
-            <div class="col-lg-3 col-md-6">
-              <label for="count-user-input" class="form-label text-white">ผู้ตรวจนับ</label>
-              <input type="text" class="form-control form-control-lg" id="count-user-input" placeholder="ชื่อผู้ตรวจนับ">
+          </div>
+          <div class="col-lg-4 col-md-6">
+            <div class="d-flex align-items-center gap-2">
+              <span class="small fw-bold text-secondary text-nowrap"><i class="fas fa-user-nurse text-primary me-1"></i>ผู้ตรวจ:</span>
+              <input type="text" class="form-control form-control-sm" id="count-user-input" placeholder="ชื่อผู้ตรวจนับ">
             </div>
           </div>
         </div>
       </div>
 
-      <div id="shift-batch-loading" class="alert alert-info border-0 d-flex align-items-center gap-3 mb-4 d-none">
+      <!-- Inline Loading Alert -->
+      <div id="shift-batch-loading" class="alert alert-info border-0 d-flex align-items-center gap-2 py-2 px-3 mb-2 d-none" style="font-size: 0.85rem;">
         <div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>
         <div>
-          <div class="fw-semibold">กำลังโหลดรายการยาและประวัติการตรวจนับ</div>
-          <div class="small text-secondary" data-loading-text>โปรดรอสักครู่ ระบบกำลังอัปเดตข้อมูลล่าสุด</div>
+          <span class="fw-semibold">กำลังโหลดข้อมูล...</span>
+          <span class="text-secondary" data-loading-text>โปรดรอสักครู่ ระบบกำลังอัปเดตข้อมูลล่าสุด</span>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm p-4 mb-4" style="border-radius: 12px;">
-        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
-          <div>
-            <h3 class="mb-1 text-primary"><i class="fas fa-table-list me-2"></i>ตารางแดชบอร์ดรายการยา (Batch Check-in Table)</h3>
-            <p class="text-secondary small mb-0">กรอกยอดแอมป์ดีและแอมป์เปล่าในตารางเดียว ระบบจะคำนวณผลรวมและตรวจสอบแบบเรียลไทม์</p>
-          </div>
+      <!-- Main Batch Check-in Table Card -->
+      <div class="card border-0 shadow-sm p-3 mb-2 bg-white rounded-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold text-primary small"><i class="fas fa-table-list me-1"></i>ตารางตรวจนับรายการยา (Batch Check-in)</div>
+          <div class="text-secondary" style="font-size: 0.8rem;" id="shift-batch-summary-text">ตรวจสอบแล้ว 0 จาก 0 รายการ</div>
         </div>
 
-        <div class="table-responsive" style="box-shadow: none;">
-          <table id="shift-batch-table" class="table table-hover align-middle w-100 mb-0 stack-table-mobile">
-            <thead>
-              <tr>
-                <th style="min-width: 140px;">สถานะ</th>
-                <th>ชื่อยา</th>
-                <th class="text-center" style="min-width: 130px;">ยอดเป้าหมาย Stock</th>
-                <th class="text-center" style="min-width: 120px;">แอมป์ดี (พร้อมใช้)</th>
-                <th class="text-center" style="min-width: 120px;">แอมป์เปล่า</th>
-                <th class="text-center" style="min-width: 120px;">ยอดรวมที่นับได้</th>
-                <th class="text-center" style="min-width: 180px;">ผลตรวจสอบ</th>
-                <th class="text-center" style="min-width: 140px;">Action</th>
+        <div class="table-responsive mb-2" style="box-shadow: none;">
+          <table id="shift-batch-table" class="table table-hover table-bordered align-middle w-100 mb-0 shift-table-compact stack-table-mobile">
+            <thead class="table-light">
+              <tr class="text-center">
+                <th style="width: 100px;">สถานะ</th>
+                <th class="text-start">ชื่อยาเสพติด</th>
+                <th style="width: 110px;">Stock Ward</th>
+                <th style="width: 135px;">แอมป์ดี (พร้อมใช้)</th>
+                <th style="width: 110px;">แอมป์เปล่า</th>
+                <th style="width: 100px;">ยอดรวม</th>
+                <th style="width: 150px;">ผลตรวจสอบ</th>
+                <th style="width: 85px;">Action</th>
               </tr>
             </thead>
             <tbody id="shift-batch-tbody"></tbody>
           </table>
         </div>
 
-        <div class="row g-3 mt-4">
-          <div class="col-md-3">
-            <div class="stat-card primary h-100">
-              <div class="text-muted small mb-1">ตรวจสอบแล้ว</div>
-              <h3 class="mb-0" id="shift-batch-summary-checked">0</h3>
+        <!-- Summary Status Chips & Submit Bar -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2 border-top">
+          <!-- Chips -->
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="shift-chip bg-primary-subtle text-primary border">
+              <i class="fas fa-check-circle"></i> ตรวจแล้ว: <b id="shift-batch-summary-checked">0</b>
+            </div>
+            <div class="shift-chip bg-success-subtle text-success border">
+              <i class="fas fa-circle-check"></i> พร้อมส่ง: <b id="shift-batch-summary-ready">0</b>
+            </div>
+            <div class="shift-chip bg-warning-subtle text-dark border">
+              <i class="fas fa-hourglass-half"></i> ยังไม่นับ: <b id="shift-batch-summary-pending">0</b>
+            </div>
+            <div class="shift-chip bg-danger-subtle text-danger border">
+              <i class="fas fa-triangle-exclamation"></i> ผลไม่ตรง: <b id="shift-batch-summary-mismatch">0</b>
             </div>
           </div>
-          <div class="col-md-3">
-            <div class="stat-card success h-100">
-              <div class="text-muted small mb-1">พร้อมส่ง</div>
-              <h3 class="mb-0" id="shift-batch-summary-ready">0</h3>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="stat-card warning h-100">
-              <div class="text-muted small mb-1">ยังไม่นับ</div>
-              <h3 class="mb-0" id="shift-batch-summary-pending">0</h3>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="stat-card danger h-100">
-              <div class="text-muted small mb-1">ผลไม่ตรง</div>
-              <h3 class="mb-0" id="shift-batch-summary-mismatch">0</h3>
-            </div>
-          </div>
-        </div>
 
-        <div id="shift-batch-alert" class="alert alert-info border-0 mt-4 mb-3">
-          พร้อมตรวจนับต่อได้ทันที
-        </div>
-
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-          <div class="text-secondary small" id="shift-batch-summary-text">ตรวจสอบแล้ว 0 จาก 0 รายการ</div>
-          <button type="submit" id="btn-save-batch" class="btn btn-primary-custom btn-lg px-4" disabled>
-            <i class="fas fa-check-double me-2"></i>บันทึกและส่งตรวจเช็คยอด
-          </button>
+          <!-- Action Button & Alert -->
+          <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
+            <div id="shift-batch-alert" class="small text-muted text-end d-none d-md-block" style="font-size: 0.82rem;">
+              พร้อมตรวจนับต่อได้ทันที
+            </div>
+            <button type="submit" id="btn-save-batch" class="btn btn-primary-custom btn-sm px-3 py-2 fw-semibold" disabled>
+              <i class="fas fa-check-double me-1"></i>บันทึกและส่งตรวจเช็คยอด
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm p-4" style="border-radius: 12px;">
-        <h3 class="mb-3 text-primary"><i class="fas fa-clock-rotate-left me-2"></i>ประวัติการตรวจนับยาประจำเวร</h3>
-        <p class="text-secondary small mb-4">แสดงเฉพาะรายการของวันที่และเวรที่เลือก เพื่อให้ดูย้อนหลังและตรวจทานได้ง่าย</p>
-        <div class="table-responsive" style="box-shadow: none;">
-          <table id="shift-history-table" class="table table-hover align-middle w-100 mb-0 stack-table-mobile">
-            <thead>
-              <tr>
-                <th>วันที่</th>
-                <th>เวร</th>
-                <th>ชื่อยา</th>
-                <th>แอมป์ดี</th>
-                <th>แอมป์เปล่า</th>
-                <th>ยอดรวม</th>
-                <th>ผลตรวจสอบ</th>
-                <th>หมายเหตุ</th>
-                <th>ผู้บันทึก</th>
-              </tr>
-            </thead>
-            <tbody id="shift-history-tbody"></tbody>
-          </table>
+      <!-- History Accordion / Section -->
+      <div class="accordion mb-2" id="historyAccordion">
+        <div class="accordion-item border-0 shadow-sm rounded-3 overflow-hidden">
+          <h2 class="accordion-header" id="headingHistory">
+            <button class="accordion-button collapsed py-2 px-3 bg-light text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHistory" aria-expanded="false" aria-controls="collapseHistory" style="font-size: 0.88rem;">
+              <i class="fas fa-clock-rotate-left me-2 text-secondary"></i>ประวัติการตรวจนับของวันที่และเวรนี้ (คลิกเพื่อดูย้อนหลัง)
+            </button>
+          </h2>
+          <div id="collapseHistory" class="accordion-collapse collapse" aria-labelledby="headingHistory" data-bs-parent="#historyAccordion">
+            <div class="accordion-body p-3 bg-white">
+              <div class="table-responsive" style="box-shadow: none;">
+                <table id="shift-history-table" class="table table-hover align-middle w-100 mb-0 shift-table-compact stack-table-mobile">
+                  <thead class="table-light">
+                    <tr>
+                      <th>วันที่</th>
+                      <th>เวร</th>
+                      <th>ชื่อยา</th>
+                      <th>แอมป์ดี</th>
+                      <th>แอมป์เปล่า</th>
+                      <th>ยอดรวม</th>
+                      <th>ผลตรวจสอบ</th>
+                      <th>ผู้บันทึก</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shift-history-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
     </form>
   </div>
 
+  <!-- Loading Spinner -->
   <div id="loading-spinner-overlay" class="d-none">
     <div class="spinner-border spinner-custom" role="status">
       <span class="visually-hidden">กำลังโหลด...</span>

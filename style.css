@@ -31,96 +31,183 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Navbar Custom Styling & Sidebar Layout */
+html, body {
+  overflow-x: hidden;
+}
+
 .navbar-custom {
   background-color: var(--primary-color) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 0.8rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 1.25rem 1rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .navbar-custom .navbar-brand {
   font-family: 'Kanit', sans-serif;
   font-weight: 600;
-  font-size: 1.35rem;
   letter-spacing: 0.5px;
   display: flex;
-  align-items: flex-start;
-  gap: 0;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: 1.25rem;
+  padding: 0;
+  white-space: normal;
 }
 
-.navbar-custom .navbar-brand small {
-  display: block;
-  font-size: 0.78rem;
-  line-height: 1.2;
+.navbar-brand-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
 .navbar-custom .navbar-brand-text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.4rem;
   min-width: 0;
 }
 
 .navbar-custom .brand-title {
-  line-height: 1.12;
+  font-size: 1.22rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
 }
 
 .navbar-custom .brand-subtitle {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.65);
   line-height: 1.2;
 }
 
 .ward-context-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  margin-top: 0.05rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.75rem;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
   color: #ffffff;
+  gap: 0.5rem;
 }
 
 .ward-context-pill__name {
   color: #ffffff;
-  font-size: 0.98rem;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.2px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.navbar-custom .navbar-nav {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.35rem;
+}
+
+.navbar-custom .nav-item {
+  width: 100%;
 }
 
 .navbar-custom .nav-link {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
   font-weight: 400;
+  font-size: 0.95rem;
   transition: all var(--transition-speed);
-  border-radius: 6px;
-  padding: 0.5rem 1rem !important;
-}
-
-.navbar-custom .nav-link:hover, 
-.navbar-custom .nav-link.active {
-  color: #ffffff !important;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.nav-scroll-x {
-  gap: 0.25rem;
-}
-
-.navbar-brand-wrap {
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-  gap: 0.55rem;
-}
-
-.navbar-actions {
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem !important;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.nav-menu-list {
+.navbar-custom .nav-link i {
+  width: 20px;
+  text-align: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.navbar-custom .nav-link:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.12);
+  transform: translateX(3px);
+}
+
+.navbar-custom .nav-link.active {
+  color: #ffffff !important;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.25) 0%, rgba(13, 110, 253, 0.2) 100%);
+  font-weight: 600;
+  border-left: 4px solid #06b6d4;
+}
+
+.navbar-custom .navbar-actions {
   width: 100%;
+  box-sizing: border-box;
+  margin-top: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.user-profile-badge .user-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.user-profile-badge .user-name {
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-profile-badge .user-role {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#btn-logout {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* Sidebar behavior on large screens */
@@ -132,63 +219,32 @@ h1, h2, h3, h4, h5, h6 {
     left: 0;
     top: 0;
     flex-direction: column;
-    align-items: flex-start;
-    padding: 2rem 1.25rem !important;
+    align-items: stretch;
+    padding: 1.5rem 1.15rem !important;
     overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1040;
   }
 
   .navbar-custom .container-fluid {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     height: 100%;
     padding: 0;
   }
 
   .navbar-custom .navbar-brand {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.25rem;
     width: 100%;
     white-space: normal;
   }
 
-  .navbar-custom .navbar-brand > .navbar-brand-text {
-    width: 100%;
-  }
-
   .navbar-custom .navbar-collapse {
     width: 100%;
-    align-items: flex-start;
+    align-items: stretch;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-  }
-
-  .navbar-custom .navbar-nav {
-    flex-direction: column;
-    width: 100%;
-    gap: 0.5rem;
-  }
-
-  .navbar-custom .nav-item {
-    width: 100%;
-  }
-
-  .navbar-custom .nav-link {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    padding: 0.75rem 1rem !important;
-  }
-
-  .navbar-custom .navbar-actions {
-    width: 100%;
-    margin-top: auto; /* Push configuration to bottom */
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-  }
-
-  .navbar-custom .navbar-actions button {
-    width: 100%;
-    justify-content: center;
   }
 }
 

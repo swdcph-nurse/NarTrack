@@ -56,14 +56,13 @@ document.addEventListener("DOMContentLoaded", async function() {
       await window.loadNavbar();
     }
     
-    // ตั้งค่าผู้ปฏิบัติงานอัตโนมัติในฟอร์มต่างๆ (สามารถแก้ไขได้)
-    const defaultUser = "เจ้าหน้าที่เวร";
+    // ช่องผู้ปฏิบัติงานเริ่มต้นให้เป็นค่าว่าง (บังคับให้กรอกเอง)
     const createdByInput = document.getElementById("created-by-input");
-    if (createdByInput) createdByInput.value = defaultUser;
+    if (createdByInput && !createdByInput.value) createdByInput.value = "";
     const disburseUserInput = document.getElementById("disburse-user-input");
-    if (disburseUserInput) disburseUserInput.value = defaultUser;
+    if (disburseUserInput && !disburseUserInput.value) disburseUserInput.value = "";
     const countUserInput = document.getElementById("count-user-input");
-    if (countUserInput) countUserInput.value = defaultUser;
+    if (countUserInput && !countUserInput.value) countUserInput.value = "";
   }
 
   // 2. ลงทะเบียน Service Worker สำหรับ PWA

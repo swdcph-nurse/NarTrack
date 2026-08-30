@@ -44,20 +44,24 @@
                 </select>
                 <div class="form-text text-secondary" id="stock-remain-hint" style="font-size: 0.85rem;">คงเหลือในระบบ: - แอมป์/ขวด</div>
               </div>
-              <div class="col-12">
-                <label for="patient-name-input" class="form-label">ชื่อ-นามสกุลผู้ป่วย</label>
-                <input type="text" class="form-control" id="patient-name-input" placeholder="กรอกชื่อ-นามสกุลผู้ป่วย" required>
+              <div class="col-md-6">
+                <label for="disburse-date-input" class="form-label">วันที่ตัดจ่าย <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="disburse-date-input" required>
+              </div>
+              <div class="col-md-6">
+                <label for="disburse-qty-input" class="form-label">จำนวนที่จ่าย <span class="text-danger">*</span></label>
+                <input type="number" min="1" step="any" class="form-control" id="disburse-qty-input" placeholder="จำนวนแอมป์/ขวด" required>
               </div>
               <div class="col-12">
-                <label for="patient-hn-input" class="form-label">HN (เลขประจำตัวผู้ป่วย)</label>
+                <label for="patient-name-input" class="form-label">ชื่อ-นามสกุลผู้ป่วย <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="patient-name-input" placeholder="กรอกชื่อ-นามสกุลผู้ป่วย" required>
+              </div>
+              <div class="col-md-6">
+                <label for="patient-hn-input" class="form-label">HN (เลขประจำตัวผู้ป่วย) <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="patient-hn-input" placeholder="เช่น HN64XXXXX" required>
               </div>
               <div class="col-md-6">
-                <label for="disburse-qty-input" class="form-label">จำนวนที่จ่าย</label>
-                <input type="number" min="1" step="any" class="form-control" id="disburse-qty-input" placeholder="จำนวนแอมป์/ขวด" required>
-              </div>
-              <div class="col-md-6">
-                <label for="disburse-user-input" class="form-label">ผู้จ่ายยา (พยาบาล)</label>
+                <label for="disburse-user-input" class="form-label">ผู้จ่ายยา (พยาบาล) <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="disburse-user-input" placeholder="กรอกชื่อผู้จ่ายยา" required>
               </div>
             </div>
@@ -84,7 +88,7 @@
                   <th>ผู้ป่วย (HN)</th>
                   <th>จำนวนจ่าย</th>
                   <th>ผู้จ่าย</th>
-                  <th>วันเวลาบันทึก</th>
+                  <th>วันที่ตัดจ่าย</th>
                 </tr>
               </thead>
               <tbody id="disbursement-tbody">

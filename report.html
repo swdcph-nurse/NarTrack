@@ -18,31 +18,72 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css">
   <style>
-    /* CSS สำหรับแสดงพรีวิวรายงานจัดหน้าในรูปแบบ A4 */
+    /* CSS สำหรับแสดงพรีวิวรายงานจัดหน้าในรูปแบบ A4 แนวนอน (Landscape) */
     .report-preview-container {
       background-color: #cbd5e1;
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem;
       border-radius: 12px;
       display: flex;
-      justify-content: center;
-      min-height: 500px;
+      justify-content: flex-start;
+      align-items: flex-start;
+      min-height: 550px;
+      overflow-x: auto;
     }
     
     .a4-page {
       background: white;
-      width: 210mm;
-      min-height: 297mm;
-      padding: 20mm;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      width: 297mm;
+      min-height: 210mm;
+      padding: 12mm 15mm;
+      box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.25);
       font-family: 'Prompt', 'Kanit', sans-serif;
       position: relative;
       box-sizing: border-box;
+      margin: 0 auto;
+      color: #1e293b;
     }
     
     .report-header-logo {
-      width: 65px;
-      height: 65px;
+      width: 55px;
+      height: 55px;
       object-fit: contain;
+    }
+
+    .report-table-compact {
+      font-size: 0.72rem;
+      line-height: 1.2;
+    }
+
+    .report-table-compact th, 
+    .report-table-compact td {
+      padding: 3px 4px !important;
+      vertical-align: middle;
+      text-align: center;
+    }
+
+    .report-table-compact .drug-col {
+      text-align: left !important;
+      white-space: nowrap;
+      font-weight: 500;
+      min-width: 140px;
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .report-table-compact .user-row td {
+      font-weight: 600;
+      background-color: #f8fafc;
+    }
+
+    .shift-header-night {
+      background-color: #e2e8f0;
+    }
+    .shift-header-morning {
+      background-color: #fef3c7;
+    }
+    .shift-header-afternoon {
+      background-color: #e0f2fe;
     }
   </style>
 </head>
@@ -55,91 +96,106 @@
     <div class="row g-4">
       
       <!-- Report Filter Panel -->
-      <div class="col-lg-4">
+      <div class="col-xl-3 col-lg-4">
         <div class="card border-0 shadow-sm p-4" style="border-radius: 12px; height: fit-content;">
-          <h3 class="mb-3 text-primary"><i class="fas fa-file-invoice-dollar me-2"></i>ระบบรายงาน</h3>
-          <p class="text-secondary small mb-4">เลือกประเภทรายงานและเงื่อนไขเพื่อสร้างเอกสารรายงานทางการพิมพ์</p>
+          <h4 class="mb-3 text-primary"><i class="fas fa-file-invoice me-2"></i>ระบบรายงาน</h4>
+          <p class="text-secondary small mb-4">เลือกประเภทรายงานและเงื่อนไขเพื่อสร้างเอกสารรายงานทางการแพทย์</p>
           
-          <div class="mb-4">
-            <label class="form-label font-weight-bold">1. รายงานสรุปตรวจนับประจำเดือน</label>
-            <div class="input-group mb-2">
-              <input type="month" class="form-control" id="report-month-input">
-              <button class="btn btn-primary" id="btn-generate-shift-report">
-                <i class="fas fa-magnifying-glass"></i> สร้าง
-              </button>
-            </div>
-            <div class="form-text small">แสดงสรุปประวัติการเซ็นชื่อตรวจนับยอดเวร เช้า บ่าย ดึก</div>
-          </div>
-          
-          <hr class="my-3">
-          
-          <div class="mb-4">
-            <label class="form-label font-weight-bold">2. รายงานการจ่ายยา (แยกตามชนิดยา)</label>
+          <!-- 1. รายงานสรุปตรวจนับประจำเดือน -->
+          <div class="mb-4 p-3 bg-light rounded-3 border">
+            <label class="form-label fw-bold text-dark mb-1">
+              <i class="fas fa-clipboard-check text-primary me-1"></i> 1. รายงานตรวจนับประจำเดือน
+            </label>
+            <p class="text-muted small mb-2">แสดงสรุปตรวจนับเวร (ด/ช/บ) จัดกลุ่มตามวันที่และชนิดยา (แนวนอน)</p>
             <div class="mb-2">
-              <div class="form-text text-muted mb-2"><small><i class="fas fa-info-circle me-1"></i> กด Ctrl (หรือ Cmd) หรือ Shift ค้างไว้เพื่อเลือกหลายรายการ</small></div>
-              <select class="form-select mb-2" id="report-drug-select" multiple style="min-height: 120px;">
-              </select>
-              <button class="btn btn-primary w-100" id="btn-generate-disburse-report">
-                <i class="fas fa-print me-1"></i> สร้างรายงานตัดจ่าย
-              </button>
+              <label for="report-month-input" class="form-label small text-secondary">เลือกเดือน/ปี:</label>
+              <input type="month" class="form-control form-control-sm" id="report-month-input">
             </div>
-            <div class="form-text small">แสดงรายการคนไข้ HN วันเวลาที่จ่ายและเลข LOT สำหรับยานั้น ๆ</div>
+            <button class="btn btn-primary btn-sm w-100" id="btn-generate-shift-report">
+              <i class="fas fa-table-cells me-1"></i> สร้างรายงานตรวจนับ
+            </button>
           </div>
           
-          <hr class="my-3">
+          <!-- 2. รายงานการจ่ายยา -->
+          <div class="mb-4 p-3 bg-light rounded-3 border">
+            <label class="form-label fw-bold text-dark mb-1">
+              <i class="fas fa-file-medical text-success me-1"></i> 2. รายงานการจ่ายยา
+            </label>
+            <p class="text-muted small mb-2">แสดงประวัติคนไข้ HN วันที่จ่าย และ LOT (แนวนอน)</p>
+            
+            <div class="mb-2">
+              <label for="report-drug-select" class="form-label small text-secondary">เลือกชนิดยา:</label>
+              <select class="form-select form-select-sm" id="report-drug-select">
+                <option value="">-- ทุกชนิดยา (ทั้งหมด) --</option>
+              </select>
+            </div>
+            
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label for="disburse-start-date" class="form-label small text-secondary">วันที่เริ่มต้น:</label>
+                <input type="date" class="form-control form-control-sm" id="disburse-start-date">
+              </div>
+              <div class="col-6">
+                <label for="disburse-end-date" class="form-label small text-secondary">วันที่สิ้นสุด:</label>
+                <input type="date" class="form-control form-control-sm" id="disburse-end-date">
+              </div>
+            </div>
+
+            <button class="btn btn-success btn-sm w-100" id="btn-generate-disburse-report">
+              <i class="fas fa-print me-1"></i> สร้างรายงานการจ่ายยา
+            </button>
+          </div>
           
-          <button class="btn btn-success w-100 disabled" id="btn-download-pdf">
-            <i class="fas fa-file-pdf me-2"></i>ดาวน์โหลดเอกสาร PDF (A4)
+          <button class="btn btn-dark w-100 py-2 shadow-sm disabled" id="btn-download-pdf">
+            <i class="fas fa-file-pdf text-danger me-2"></i>ดาวน์โหลด PDF (A4 แนวนอน)
           </button>
         </div>
       </div>
       
       <!-- Report Preview Panel -->
-      <div class="col-lg-8">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="mb-0 text-primary"><i class="fas fa-eye me-2"></i>พรีวิวเอกสารพิมพ์ (A4 Preview)</h4>
-          <span class="badge bg-secondary">สเกลจริง 210mm x 297mm</span>
+      <div class="col-xl-9 col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h4 class="mb-0 text-primary"><i class="fas fa-eye me-2"></i>พรีวิวเอกสารรายงาน</h4>
+          <span class="badge bg-primary px-3 py-2 fs-6"><i class="fas fa-file-lines me-1"></i>A4 แนวนอน (Landscape 297 x 210 mm)</span>
         </div>
         
-        <div class="report-preview-container overflow-auto">
-          <!-- A4 Page inside wrapper -->
+        <div class="report-preview-container">
+          <!-- A4 Landscape Page inside wrapper -->
           <div class="a4-page" id="report-print-area">
             
-            <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-4">
+            <!-- Header ส่วนหัวรายงาน -->
+            <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-3">
               <div class="d-flex align-items-center">
-                <!-- โลโก้จำลองตรากระทรวงสาธารณสุข/โรงพยาบาล -->
-                <img src="icon-app.png" alt="App Logo" class="report-header-logo me-3">
+                <img src="icon-app.png" alt="Hospital Logo" class="report-header-logo me-3">
                 <div>
-                  <h4 class="mb-0 fw-bold" id="pdf-hospital-name">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</h4>
-                  <p class="text-secondary small mb-0" id="pdf-ward-name">พิเศษปาริฉัตร</p>
+                  <h5 class="mb-0 fw-bold" id="pdf-hospital-name">โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</h5>
+                  <p class="text-secondary small mb-0" id="pdf-ward-name">หอผู้ป่วย: หอสงฆ์อาพาธ</p>
                 </div>
               </div>
-              <div class="text-end text-secondary small">
-                <p class="mb-0">แบบรายงานทางการแพทย์</p>
+              <div class="text-end text-secondary" style="font-size: 0.8rem;">
+                <p class="mb-0 fw-semibold text-dark">แบบรายงานการบริหารจัดการยาเสพติดให้โทษ</p>
                 <p class="mb-0" id="pdf-print-date">วันที่พิมพ์: -</p>
               </div>
             </div>
 
             <!-- Title ของรายงาน -->
-            <div class="text-center mb-4">
-              <h5 class="fw-bold text-uppercase" id="pdf-report-title">รายงานระบบบริหารจัดการยาเสพติด</h5>
-              <p class="text-secondary small" id="pdf-report-subtitle">กรุณาเลือกเงื่อนไขรายงานทางซ้ายมือ</p>
+            <div class="text-center mb-3">
+              <h5 class="fw-bold mb-1" id="pdf-report-title">รายงานระบบบริหารจัดการยาเสพติด</h5>
+              <p class="text-secondary small mb-0" id="pdf-report-subtitle">กรุณาเลือกเงื่อนไขรายงานทางซ้ายมือ</p>
             </div>
 
             <!-- Content Area ที่จะอัปเดตด้วย JavaScript -->
             <div id="pdf-report-content" class="small">
               <div class="text-center py-5 text-muted">
-                <i class="fas fa-file-alt fs-1 mb-3"></i>
+                <i class="fas fa-file-alt fs-1 mb-3 text-secondary opacity-50"></i>
                 <p>เลือกเงื่อนไขด้านซ้ายเพื่อเรียกดูรายงานและดาวน์โหลด PDF</p>
               </div>
             </div>
             
             <!-- Footer หน้ากระดาษ -->
-            <div style="position: absolute; bottom: 20mm; left: 20mm; right: 20mm;" class="border-top pt-3 small text-secondary">
-              <div class="d-flex justify-content-between">
-                <span>ระบบบริหารจัดการสารเสพติดควบคุมพิเศษ (Narcotics Command)</span>
-                <span>หน้า 1/1</span>
-              </div>
+            <div class="border-top pt-2 mt-3 text-secondary d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
+              <span>ระบบบริหารจัดการสารเสพติดควบคุมพิเศษ (Narcotics Command)</span>
+              <span>เอกสารทางการแพทย์ • จัดหน้าพอดี 1 หน้า A4 แนวนอน</span>
             </div>
 
           </div>

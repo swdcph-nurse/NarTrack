@@ -116,8 +116,8 @@ var GASApi = window.GASApi = window.GASApi || {
   },
 
   // 10. รายงานประวัติการตัดจ่าย
-  getDisbursementReport: async function(drugID = "") {
-    return await this.request("getDisbursementReport", "GET", { drugID });
+  getDisbursementReport: async function(drugID = "", startDate = "", endDate = "") {
+    return await this.request("getDisbursementReport", "GET", { drugID, startDate, endDate });
   },
 
   // 11. รายงานตรวจนับประจำเวรรายเดือน
