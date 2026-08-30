@@ -1,4 +1,4 @@
-const CACHE_NAME = 'narcotic-ward-v5';
+const CACHE_NAME = 'narcotic-parichat-v1';
 const ASSETS = [
   './',
   'index.html',

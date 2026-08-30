@@ -1,10 +1,12 @@
 (function () {
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
+  const APP_DEPLOYMENT_ID = "parichat-2026-08-31";
+  const DEFAULT_WARD_NAME = "พิเศษปาริฉัตร";
 
   
   function getWardName() {
     // รองรับทั้ง key เก่า (WARD_NAME) และ key ใหม่ (APP_WARD_NAME)
-    return localStorage.getItem("APP_WARD_NAME") || localStorage.getItem("WARD_NAME") || "พิเศษปาริฉัตร";
+    return localStorage.getItem("APP_WARD_NAME") || localStorage.getItem("WARD_NAME") || DEFAULT_WARD_NAME;
   }
 
   function getHospitalName() {
@@ -161,7 +163,15 @@
     } catch (e) {}
   })();
 
-  if (!localStorage.getItem("GAS_API_URL")) {
+  if (localStorage.getItem("APP_DEPLOYMENT_ID") !== APP_DEPLOYMENT_ID) {
+    localStorage.setItem("APP_DEPLOYMENT_ID", APP_DEPLOYMENT_ID);
+    localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
+    localStorage.setItem("WARD_NAME", DEFAULT_WARD_NAME);
+    localStorage.setItem("APP_WARD_NAME", DEFAULT_WARD_NAME);
+    localStorage.removeItem("drug_master_cache");
+    localStorage.removeItem("shift_count_history_cache");
+    localStorage.removeItem("drug_stock_cache_for_shiftcount");
+  } else if (!localStorage.getItem("GAS_API_URL")) {
     localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
   }
 
