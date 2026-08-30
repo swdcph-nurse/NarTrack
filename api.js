@@ -137,5 +137,15 @@ var GASApi = window.GASApi = window.GASApi || {
 
   saveShiftCountBatch: async function(data) {
     return await this.request("saveShiftCountBatch", "POST", data);
+  },
+
+  // 14. ดึงข้อมูลการตั้งค่าระบบ (ชื่อโรงพยาบาล, ชื่อวอร์ด)
+  getSystemConfig: async function() {
+    return await this.request("getSystemConfig", "GET");
+  },
+
+  // 15. บันทึกข้อมูลการตั้งค่าระบบ (ชื่อโรงพยาบาล, ชื่อวอร์ด)
+  saveSystemConfig: async function(data) {
+    return await this.request("saveSystemConfig", "POST", data);
   }
 };
