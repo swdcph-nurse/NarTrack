@@ -1843,8 +1843,9 @@
       // ผลตรวจสอบ (เก็บแต่ละรายการยา)
       const rk = dayNum + "_" + sKey + "_" + dId + "_result";
       const isCorrect = String(item.Result || "") === "ถูกต้อง";
+      const note = String(item.Note || item.Reason || item.Remark || "").trim();
       resultMap.set(rk, isCorrect);
-      if (item.Note) noteMap.set(rk, item.Note);
+      if (note) noteMap.set(rk, note);
     });
 
     const shifts = ["ด", "ช", "บ"];
@@ -1878,7 +1879,15 @@
 
             // ไฮไลท์สีตามผลตรวจสอบ
             if (val !== "" && isCorrect === false) {
-              cellClass += " bg-danger-subtle text-danger";
+              cellClass += " bg-danger-subtle text-danger shift-history-mismatch-cell";
+              cellStyle += " cursor: pointer;";
+              const detailAttrs = ' role="button" tabindex="0" data-history-drug="' + escapeHtml(drug.name) + '"' +
+                ' data-history-day="' + d + '"' +
+                ' data-history-shift="' + escapeHtml(s) + '"' +
+                ' data-history-value="' + escapeHtml(val) + '"' +
+                ' data-history-note="' + escapeHtml(note || "ไม่ได้ระบุเหตุผล") + '"' +
+                ' aria-label="ดูเหตุผลรายการที่ผลไม่ตรง"';
+              tooltip = ' title="' + escapeHtml(note || "คลิกเพื่อดูเหตุผล") + '"' + detailAttrs;
             } else if (val !== "" && isCorrect === true) {
               cellClass += " bg-success-subtle text-success";
             }
@@ -1943,10 +1952,40 @@
     // หัวตาราง
     const headerHtml = '<div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-primary-subtle border border-primary-subtle rounded-3">' +
       '<div class="fw-bold text-primary"><i class="fas fa-table-cells me-1"></i>ตารางประวัติการตรวจนับ: ' + escapeHtml(monthLabel) + '</div>' +
-      '<div class="text-muted small">เซลล์สีเขียว = ครบถ้วน | สีแดง = ไม่ตรง | วางเมาส์บนเซลล์เพื่อดูหมายเหตุ</div>' +
+      '<div class="text-muted small">เซลล์สีเขียว = ครบถ้วน | สีแดง = ไม่ตรง | คลิกช่องสีแดงเพื่อดูเหตุผล</div>' +
       '</div>';
 
     container.innerHTML = cleanHtmlMarkup(headerHtml + '<div>' + tableTop + tableBottom + '</div>');
+
+    container.querySelectorAll(".shift-history-mismatch-cell").forEach(cell => {
+      const showMismatchReason = () => {
+        const note = cell.dataset.historyNote || "ไม่ได้ระบุเหตุผล";
+        const day = cell.dataset.historyDay || "-";
+        const shift = cell.dataset.historyShift || "-";
+        const drug = cell.dataset.historyDrug || "-";
+        const value = cell.dataset.historyValue || "-";
+        Swal.fire({
+          icon: "warning",
+          title: "เหตุผลที่ผลตรวจนับไม่ตรง",
+          html: '<div class="text-start">' +
+            '<div class="mb-2"><span class="fw-bold text-secondary">วันที่:</span> ' + escapeHtml(day) + ' ' + escapeHtml(monthLabel) + '</div>' +
+            '<div class="mb-2"><span class="fw-bold text-secondary">เวร:</span> ' + escapeHtml(shift) + '</div>' +
+            '<div class="mb-2"><span class="fw-bold text-secondary">รายการยา:</span> ' + escapeHtml(drug) + '</div>' +
+            '<div class="mb-2"><span class="fw-bold text-secondary">ยอดแอมป์ดี:</span> ' + escapeHtml(value) + '</div>' +
+            '<div class="p-2 bg-danger-subtle border border-danger-subtle rounded-2"><div class="fw-bold text-danger mb-1">เหตุผล/หมายเหตุ</div>' +
+            '<div class="text-dark" style="white-space: pre-wrap;">' + escapeHtml(note) + '</div></div>' +
+            '</div>',
+          confirmButtonText: "ปิด"
+        });
+      };
+      cell.addEventListener("click", showMismatchReason);
+      cell.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          showMismatchReason();
+        }
+      });
+    });
   }
   // เปิดเผย renderShiftHistoryPivot ให้ใช้ภายนอก
   window.renderShiftHistoryPivot = renderShiftHistoryPivot;
