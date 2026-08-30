@@ -37,6 +37,65 @@
       font-weight: 500;
       gap: 0.4rem;
     }
+    /* Pivot history table styles (same as report page) */
+    .report-table-compact {
+      font-size: 0.72rem;
+      line-height: 1.2;
+    }
+    .report-table-compact th,
+    .report-table-compact td {
+      padding: 3px 4px !important;
+      vertical-align: middle;
+      text-align: center;
+    }
+    .report-table-compact .drug-col {
+      text-align: left !important;
+      white-space: nowrap;
+      font-weight: 500;
+      min-width: 140px;
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .report-table-compact .user-row td {
+      font-weight: 600;
+      background-color: #f8fafc;
+    }
+    .shift-header-night  { background-color: #e2e8f0; }
+    .shift-header-morning { background-color: #fef3c7; }
+    .shift-header-afternoon { background-color: #e0f2fe; }
+
+    /* Sticky first column for pivot table */
+    #shift-history-pivot-container .table-responsive {
+      overflow-x: auto;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+    #shift-history-pivot-container .report-table-compact .drug-col {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background-color: #fff;
+      border-right: 2px solid #94a3b8 !important;
+      min-width: 130px;
+      max-width: 160px;
+      box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+    }
+    #shift-history-pivot-container .report-table-compact thead th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background-color: #f1f5f9;
+      box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+    }
+    #shift-history-pivot-container .report-table-compact .user-row td.drug-col {
+      background-color: #f8fafc;
+    }
+    /* Half-month section label bar */
+    #shift-history-pivot-container .mb-3 > .d-flex {
+      position: sticky;
+      left: 0;
+    }
   </style>
 </head>
 <body>
@@ -163,28 +222,32 @@
         <div class="accordion-item border-0 shadow-sm rounded-3 overflow-hidden">
           <h2 class="accordion-header" id="headingHistory">
             <button class="accordion-button collapsed py-2 px-3 bg-light text-primary fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHistory" aria-expanded="false" aria-controls="collapseHistory" style="font-size: 0.88rem;">
-              <i class="fas fa-clock-rotate-left me-2 text-secondary"></i>ประวัติการตรวจนับของวันที่และเวรนี้ (คลิกเพื่อดูย้อนหลัง)
+              <i class="fas fa-clock-rotate-left me-2 text-secondary"></i>ประวัติการตรวจนับทั้งหมด (คลิกเพื่อดูย้อนหลัง)
             </button>
           </h2>
           <div id="collapseHistory" class="accordion-collapse collapse" aria-labelledby="headingHistory" data-bs-parent="#historyAccordion">
             <div class="accordion-body p-3 bg-white">
-              <div class="table-responsive" style="box-shadow: none;">
-                <table id="shift-history-table" class="table table-hover align-middle w-100 mb-0 shift-table-compact stack-table-mobile">
-                  <thead class="table-light">
-                    <tr>
-                      <th>วันที่</th>
-                      <th>เวร</th>
-                      <th>ชื่อยา</th>
-                      <th>แอมป์ดี</th>
-                      <th>แอมป์เปล่า</th>
-                      <th>ยอดรวม</th>
-                      <th>ผลตรวจสอบ</th>
-                      <th>ผู้บันทึก</th>
-                    </tr>
-                  </thead>
-                  <tbody id="shift-history-tbody"></tbody>
-                </table>
+
+              <!-- Month Filter Bar -->
+              <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="small fw-bold text-secondary text-nowrap"><i class="fas fa-calendar-alt text-primary me-1"></i>เดือนที่ต้องการดูประวัติ:</span>
+                  <input type="month" class="form-control form-control-sm" id="history-month-input" style="width: 180px;">
+                </div>
+                <button class="btn btn-primary btn-sm px-3" id="btn-load-history-month">
+                  <i class="fas fa-table-cells me-1"></i>แสดงตาราง
+                </button>
+                <div class="text-muted small" id="history-pivot-status"></div>
               </div>
+
+              <!-- Pivot Table Container -->
+              <div id="shift-history-pivot-container">
+                <div class="text-center text-muted py-4" style="font-size: 0.88rem;">
+                  <i class="fas fa-calendar-days fs-2 mb-2 d-block opacity-50"></i>
+                  เลือกเดือนแล้วกด "แสดงตาราง" เพื่อดูประวัติการตรวจนับ
+                </div>
+              </div>
+
             </div>
           </div>
         </div>

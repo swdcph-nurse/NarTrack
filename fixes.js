@@ -4,7 +4,7 @@
   
   function getWardName() {
     // รองรับทั้ง key เก่า (WARD_NAME) และ key ใหม่ (APP_WARD_NAME)
-    return localStorage.getItem("APP_WARD_NAME") || localStorage.getItem("WARD_NAME") || "หอสงฆ์อาพาธ";
+    return localStorage.getItem("APP_WARD_NAME") || localStorage.getItem("WARD_NAME") || "พิเศษปาริฉัตร";
   }
 
   function getHospitalName() {
@@ -38,7 +38,7 @@
       <div class="text-start">
         <div class="mb-3">
           <label class="form-label small fw-bold text-dark mb-1"><i class="fas fa-hospital-user text-primary me-1"></i>ชื่อหอผู้ป่วย / หน่วยงาน <span class="text-danger">*</span></label>
-          <input type="text" class="form-control form-control-sm" id="cfg-ward-name" value="${escapeHtml(currentWard)}" placeholder="เช่น หอสงฆ์อาพาธ, ICU, ศัลยกรรมชาย">
+          <input type="text" class="form-control form-control-sm" id="cfg-ward-name" value="${escapeHtml(currentWard)}" placeholder="เช่น พิเศษปาริฉัตร, ICU, ศัลยกรรมชาย">
         </div>
         <div class="mb-3">
           <label class="form-label small fw-bold text-dark mb-1"><i class="fas fa-hospital text-primary me-1"></i>ชื่อโรงพยาบาล <span class="text-danger">*</span></label>
@@ -1038,9 +1038,12 @@
 
     function normShift(s) {
       const str = String(s || "").trim();
-      if (str.indexOf("ด") === 0 || str.toLowerCase().indexOf("n") === 0) return "ด";
-      if (str.indexOf("ช") === 0 || str.toLowerCase().indexOf("m") === 0) return "ช";
-      if (str.indexOf("บ") === 0 || str.toLowerCase().indexOf("a") === 0 || str.toLowerCase().indexOf("e") === 0) return "บ";
+      // "ดึก" — ขึ้นต้นด้วย ด
+      if (str === "ดึก" || str.indexOf("ด") === 0) return "ด";
+      // "เช้า" — ขึ้นต้นด้วยสระ เ ตามด้วย ช
+      if (str === "เช้า" || str.indexOf("เช") === 0 || str.indexOf("ช") === 0) return "ช";
+      // "บ่าย" — ขึ้นต้นด้วย บ
+      if (str === "บ่าย" || str.indexOf("บ") === 0) return "บ";
       return str;
     }
 
@@ -1073,9 +1076,9 @@
     const userMap = new Map();
 
     rows.forEach(item => {
-      if (!item.Date) return;
-      const dObj = new Date(item.Date);
-      const dayNum = !isNaN(dObj.getTime()) ? dObj.getDate() : parseInt(String(item.Date).split("-")[2], 10);
+      const dateStr = getShiftCountDateString(item.Date);
+      if (!dateStr) return;
+      const dayNum = parseInt(dateStr.split("-")[2], 10);
       if (!dayNum || isNaN(dayNum)) return;
 
       const sKey = normShift(item.Shift);
@@ -1430,6 +1433,10 @@
   // --- Shift Count Page & Batch System ---
   function getBangkokDateString(date) {
     if (!date) return "";
+    if (typeof date === "string") {
+      const ymd = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (ymd) return ymd[1] + "-" + ymd[2] + "-" + ymd[3];
+    }
     let d;
     if (typeof date === "string" && date.length === 10 && date.indexOf("-") === 4) {
       d = new Date(date + "T00:00:00+07:00");
@@ -1444,6 +1451,10 @@
       day: "2-digit"
     });
     return formatter.format(d);
+  }
+
+  function getShiftCountDateString(value) {
+    return getBangkokDateString(value);
   }
 
   function formatThaiDate(value) {
@@ -1696,47 +1707,239 @@
     }
   }
 
+  function getHistorySortTimestamp(item) {
+    const raw = (item && (item.Timestamp || item.Date)) || null;
+    const t = raw ? new Date(raw).getTime() : NaN;
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  function getHistoryTimeDisplay(item) {
+    const raw = item && item.Timestamp;
+    if (!raw) return "";
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // เก็บ cache ประวัติตรวจนับ (ใช้โดย renderShiftHistoryPivot)
   window.renderShiftCountTable = function (historyList) {
-    const tbody = document.getElementById("shift-history-tbody");
-    if (!tbody) return;
-
-    if (window.__shiftCountHistoryTable && typeof window.__shiftCountHistoryTable.destroy === "function") {
-      window.__shiftCountHistoryTable.destroy();
-      window.__shiftCountHistoryTable = null;
+    // บันทึก cache ไว้สำหรับ pivot
+    window.__shiftHistoryAllRows = Array.isArray(historyList) ? historyList : [];
+    // ถ้า accordion เปิดอยู่ให้ re-render pivot ด้วย
+    const collapseEl = document.getElementById("collapseHistory");
+    if (collapseEl && collapseEl.classList.contains("show")) {
+      const monthInput = document.getElementById("history-month-input");
+      if (monthInput && monthInput.value) {
+        renderShiftHistoryPivot(monthInput.value);
+      }
     }
+  };
 
-    tbody.closest("table")?.classList.add("stack-table-mobile");
-    const rows = Array.isArray(historyList) ? historyList : [];
-    if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีประวัติการตรวจนับ</td></tr>';
+  function renderShiftHistoryPivot(yearMonth) {
+    const container = document.getElementById("shift-history-pivot-container");
+    const statusEl = document.getElementById("history-pivot-status");
+    if (!container) return;
+
+    const parts = String(yearMonth || "").split("-");
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const months = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+    const monthLabel = year && month ? (months[month - 1] || "-") + " พ.ศ. " + (year + 543) : "-";
+
+    if (!year || !month) {
+      container.innerHTML = '<div class="text-center text-muted py-4" style="font-size: 0.88rem;"><i class="fas fa-calendar-days fs-2 mb-2 d-block opacity-50"></i>กรุณาเลือกเดือนที่ต้องการดูประวัติ</div>';
+      if (statusEl) statusEl.textContent = "";
       return;
     }
 
-    tbody.innerHTML = cleanHtmlMarkup(rows.map(item => {
-      const isCorrect = String(item.Result || "") === "ถูกต้อง";
-      const noteBadge = item.Note ? '<div class="text-danger small mt-1"><i class="fas fa-comment-dots me-1"></i>' + escapeHtml(item.Note) + '</div>' : '';
-      return `
-        <tr>
-          <td data-label="วันที่">${escapeHtml(formatShortDate(item.Date))}</td>
-          <td data-label="เวร"><span class="badge bg-primary">${escapeHtml(getShiftLabel(item.Shift))}</span></td>
-          <td data-label="ชื่อยา">${escapeHtml(item.DrugName || "-")} ${noteBadge}</td>
-          <td data-label="แอมป์ดี" class="text-end">${escapeHtml(item.AmpRemain ?? 0)}</td>
-          <td data-label="แอมป์เปล่า" class="text-end">${escapeHtml(item.EmptyAmp ?? 0)}</td>
-          <td data-label="ยอดรวม" class="text-end fw-semibold">${escapeHtml(item.ExpectedTotal ?? 0)}</td>
-          <td data-label="ผลตรวจสอบ" class="text-center ${isCorrect ? "text-success fw-semibold" : "text-danger fw-semibold"}">${isCorrect ? "✓ ครบถ้วน" : "✗ ไม่ตรง"}</td>
-          <td data-label="ผู้บันทึก">${escapeHtml(item.User || "-")}</td>
-        </tr>
-      `;
-    }).join(""));
-
-    window.__shiftCountHistoryTable = $("#shift-history-table").DataTable({
-      language: {
-        url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json"
-      },
-      order: [[0, "desc"]],
-      pageLength: 10
+    const allRows = Array.isArray(window.__shiftHistoryAllRows) ? window.__shiftHistoryAllRows : [];
+    // กรองเฉพาะเดือนที่เลือก โดยยึดวันที่ตามฐานข้อมูล ไม่ให้ ISO UTC เลื่อนวัน
+    const rows = allRows.filter(item => {
+      const dateStr = getShiftCountDateString(item.Date);
+      if (!dateStr) return false;
+      const dp = dateStr.split("-");
+      if (dp.length < 2) return false;
+      return parseInt(dp[0], 10) === year && parseInt(dp[1], 10) === month;
     });
-  };
+
+    if (statusEl) {
+      statusEl.textContent = rows.length > 0 ? "พบ " + rows.length + " รายการ" : "ไม่พบข้อมูลในเดือนนี้";
+    }
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    function normShift(s) {
+      const str = String(s || "").trim();
+      // "ดึก" — ขึ้นต้นด้วย ด
+      if (str === "ดึก" || str.indexOf("ด") === 0) return "ด";
+      // "เช้า" — ขึ้นต้นด้วยสระ เ ตามด้วย ช (ต้องตรวจ includes ไม่ใช่ index 0)
+      if (str === "เช้า" || str.indexOf("เช") === 0 || str.indexOf("ช") === 0) return "ช";
+      // "บ่าย" — ขึ้นต้นด้วย บ
+      if (str === "บ่าย" || str.indexOf("บ") === 0) return "บ";
+      return str;
+    }
+
+    // สร้าง drugMap จาก drug master + ข้อมูลที่มีในเดือนนั้น
+    const drugMap = new Map();
+    const masterList = getDrugMasterCache();
+    if (Array.isArray(masterList) && masterList.length > 0) {
+      masterList.forEach(m => {
+        if (m.DrugID) {
+          const dName = m.DrugName || "-";
+          const dStr = m.Strength ? " (" + m.Strength + ")" : "";
+          drugMap.set(String(m.DrugID), { id: String(m.DrugID), name: dName + dStr });
+        }
+      });
+    }
+    rows.forEach(item => {
+      const dId = String(item.DrugID || item.DrugName || "").trim();
+      if (dId && !drugMap.has(dId)) {
+        drugMap.set(dId, { id: dId, name: item.DrugName || dId });
+      }
+    });
+
+    const drugs = Array.from(drugMap.values());
+
+    if (rows.length === 0) {
+      container.innerHTML = '<div class="text-center text-muted py-4" style="font-size: 0.88rem;"><i class="fas fa-calendar-xmark fs-2 mb-2 d-block opacity-50"></i>ไม่พบข้อมูลการตรวจนับในเดือน ' + escapeHtml(monthLabel) + '</div>';
+      return;
+    }
+
+    // สร้าง countMap / userMap
+    const countMap = new Map();
+    const userMap = new Map();
+    const resultMap = new Map(); // เก็บผลตรวจสอบ (ถูกต้อง/ไม่ถูกต้อง)
+    const noteMap = new Map();   // เก็บหมายเหตุ
+
+    rows.forEach(item => {
+      const dateStr = getShiftCountDateString(item.Date);
+      if (!dateStr) return;
+      const dayNum = parseInt(dateStr.split("-")[2], 10);
+      if (!dayNum || isNaN(dayNum)) return;
+
+      const sKey = normShift(item.Shift);
+      const dId = String(item.DrugID || item.DrugName || "").trim();
+      // แสดง AmpRemain (แอมป์ดี) เป็นค่าหลัก เหมือนรายงาน
+      const val = item.AmpRemain != null ? item.AmpRemain : (item.ExpectedTotal != null ? item.ExpectedTotal : "");
+
+      countMap.set(dayNum + "_" + sKey + "_" + dId, val);
+      if (item.DrugName) {
+        countMap.set(dayNum + "_" + sKey + "_" + item.DrugName.trim(), val);
+      }
+
+      const ck = dayNum + "_" + sKey;
+      if (item.User) userMap.set(ck, item.User);
+
+      // ผลตรวจสอบ (เก็บแต่ละรายการยา)
+      const rk = dayNum + "_" + sKey + "_" + dId + "_result";
+      const isCorrect = String(item.Result || "") === "ถูกต้อง";
+      resultMap.set(rk, isCorrect);
+      if (item.Note) noteMap.set(rk, item.Note);
+    });
+
+    const shifts = ["ด", "ช", "บ"];
+
+    function buildHistoryHalfTable(startDay, endDay, label) {
+      let headerDaysHtml = '';
+      let headerShiftsHtml = '';
+
+      for (let d = startDay; d <= endDay; d++) {
+        headerDaysHtml += '<th colspan="3" class="text-center bg-secondary-subtle border-start border-end" style="border-bottom: 1px solid #94a3b8 !important;">วันที่ ' + d + '</th>';
+        headerShiftsHtml += '<th class="shift-header-night border-start" style="width: 22px; font-size: 0.68rem;">ด</th>' +
+          '<th class="shift-header-morning" style="width: 22px; font-size: 0.68rem;">ช</th>' +
+          '<th class="shift-header-afternoon border-end" style="width: 22px; font-size: 0.68rem;">บ</th>';
+      }
+
+      let drugRowsHtml = '';
+      drugs.forEach(drug => {
+        let cellsHtml = '';
+        for (let d = startDay; d <= endDay; d++) {
+          shifts.forEach((s, sIdx) => {
+            const key1 = d + "_" + s + "_" + drug.id;
+            const key2 = d + "_" + s + "_" + drug.name;
+            const val = countMap.has(key1) ? countMap.get(key1) : (countMap.has(key2) ? countMap.get(key2) : "");
+            const rk = d + "_" + s + "_" + drug.id + "_result";
+            const isCorrect = resultMap.has(rk) ? resultMap.get(rk) : null;
+            const note = noteMap.get(rk) || "";
+            const borderClass = (sIdx === 0 ? "border-start " : "") + (sIdx === 2 ? "border-end " : "");
+            let cellStyle = "font-size: 0.72rem; font-weight: " + (val !== "" ? "600" : "normal") + ";";
+            let cellClass = "text-center " + borderClass;
+            let tooltip = note ? ' title="' + escapeHtml(note) + '"' : '';
+
+            // ไฮไลท์สีตามผลตรวจสอบ
+            if (val !== "" && isCorrect === false) {
+              cellClass += " bg-danger-subtle text-danger";
+            } else if (val !== "" && isCorrect === true) {
+              cellClass += " bg-success-subtle text-success";
+            }
+
+            cellsHtml += '<td class="' + cellClass + '" style="' + cellStyle + '"' + tooltip + '>' + (val !== "" ? escapeHtml(val) : "") + '</td>';
+          });
+        }
+
+        drugRowsHtml += '<tr>' +
+          '<td class="drug-col border-end text-truncate" title="' + escapeHtml(drug.name) + '">' + escapeHtml(drug.name) + '</td>' +
+          cellsHtml +
+          '</tr>';
+      });
+
+      let userCellsHtml = '';
+      for (let d = startDay; d <= endDay; d++) {
+        shifts.forEach((s, sIdx) => {
+          const u = userMap.get(d + "_" + s) || "";
+          const borderClass = (sIdx === 0 ? "border-start " : "") + (sIdx === 2 ? "border-end " : "");
+          const shortName = u.length > 8 ? u.slice(0, 7) + "\u2026" : u;
+          userCellsHtml += '<td class="text-center ' + borderClass + '" style="font-size: 0.60rem; line-height: 1.1; max-width: 24px; overflow: hidden; white-space: nowrap;" title="' + escapeHtml(u) + '">' + escapeHtml(shortName) + '</td>';
+        });
+      }
+
+      const userRowHtml = '<tr class="user-row border-top">' +
+        '<td class="drug-col border-end fw-bold text-primary" style="font-size: 0.72rem;"><i class="fas fa-signature me-1"></i>ชื่อผู้ตรวจ</td>' +
+        userCellsHtml +
+        '</tr>';
+
+      return '<div class="mb-3">' +
+        '<div class="d-flex justify-content-between align-items-center mb-1">' +
+        '<span class="badge bg-dark px-2 py-1" style="font-size: 0.72rem;">ช่วงที่: ' + label + ' (วันที่ ' + startDay + ' - ' + endDay + ')</span>' +
+        '<span class="text-muted small" style="font-size: 0.7rem;"><span class="badge bg-secondary me-1">ด</span>=ดึก &nbsp; <span class="badge bg-warning text-dark me-1">ช</span>=เช้า &nbsp; <span class="badge bg-info text-dark me-1">บ</span>=บ่าย &nbsp; <span class="badge bg-success-subtle text-success border me-1">&#x2713;</span>=ครบถ้วน &nbsp; <span class="badge bg-danger-subtle text-danger border me-1">&#x2717;</span>=ไม่ตรง</span>' +
+        '</div>' +
+        '<div class="table-responsive">' +
+        '<table class="table table-bordered table-sm w-100 report-table-compact mb-0" style="border: 1.5px solid #64748b;">' +
+        '<thead>' +
+        '<tr class="text-center align-middle" style="background-color: #f1f5f9;">' +
+        '<th rowspan="2" class="drug-col border-end align-middle bg-light" style="width: 150px; font-size: 0.75rem;">รายการยา / วันที่</th>' +
+        headerDaysHtml +
+        '</tr>' +
+        '<tr class="text-center align-middle">' +
+        headerShiftsHtml +
+        '</tr>' +
+        '</thead>' +
+        '<tbody>' +
+        drugRowsHtml +
+        userRowHtml +
+        '</tbody>' +
+        '</table>' +
+        '</div>' +
+        '</div>';
+    }
+
+    const splitDay = Math.min(16, daysInMonth);
+    const tableTop = buildHistoryHalfTable(1, splitDay, "ครึ่งแรกของเดือน");
+    let tableBottom = '';
+    if (daysInMonth > splitDay) {
+      tableBottom = buildHistoryHalfTable(splitDay + 1, daysInMonth, "ครึ่งหลังของเดือน");
+    }
+
+    // หัวตาราง
+    const headerHtml = '<div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-primary-subtle border border-primary-subtle rounded-3">' +
+      '<div class="fw-bold text-primary"><i class="fas fa-table-cells me-1"></i>ตารางประวัติการตรวจนับ: ' + escapeHtml(monthLabel) + '</div>' +
+      '<div class="text-muted small">เซลล์สีเขียว = ครบถ้วน | สีแดง = ไม่ตรง | วางเมาส์บนเซลล์เพื่อดูหมายเหตุ</div>' +
+      '</div>';
+
+    container.innerHTML = cleanHtmlMarkup(headerHtml + '<div>' + tableTop + tableBottom + '</div>');
+  }
+  // เปิดเผย renderShiftHistoryPivot ให้ใช้ภายนอก
+  window.renderShiftHistoryPivot = renderShiftHistoryPivot;
 
   window.renderShiftBatchTable = function (masterList, historyList, selectedDate, selectedShift, stockList) {
     const tbody = document.getElementById("shift-batch-tbody");
@@ -1920,7 +2123,7 @@
 
     if (cachedMaster.length || cachedHistory.length) {
       window.renderShiftBatchTable(cachedMaster, cachedHistory, selectedDate, selectedShift, cachedStock);
-      window.renderShiftCountTable(cachedHistory.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+      window.renderShiftCountTable(cachedHistory);
     } else {
       const batchTbody = document.getElementById("shift-batch-tbody");
       const historyTbody = document.getElementById("shift-history-tbody");
@@ -1955,7 +2158,7 @@
     window.__shiftCountHistoryCache = Array.isArray(historyRows) ? historyRows : [];
     window.__shiftCountStockCache = Array.isArray(stockRows) ? stockRows : [];
     window.renderShiftBatchTable(window.__shiftCountMasterCache, window.__shiftCountHistoryCache, selectedDate, selectedShift, window.__shiftCountStockCache);
-    window.renderShiftCountTable(window.__shiftCountHistoryCache.filter(item => getBangkokDateString(item.Date) === String(selectedDate || "") && String(item.Shift || "") === String(selectedShift || "")));
+    window.renderShiftCountTable(window.__shiftCountHistoryCache);
     setInlineLoadingState("shift-batch-loading", false);
   }
 
@@ -2131,6 +2334,40 @@
       countForm.dataset.bound = "1";
       countForm.addEventListener("submit", function (event) {
         event.preventDefault();
+      });
+    }
+
+    // --- Bind history month input & button ---
+    const historyMonthInput = document.getElementById("history-month-input");
+    const historyLoadBtn = document.getElementById("btn-load-history-month");
+
+    // ตั้งค่า default เดือนปัจจุบัน
+    if (historyMonthInput && !historyMonthInput.value) {
+      historyMonthInput.value = new Date().toISOString().slice(0, 7);
+    }
+
+    // เมื่อกดปุ่มแสดงตาราง
+    if (historyLoadBtn && !historyLoadBtn.dataset.bound) {
+      historyLoadBtn.dataset.bound = "1";
+      historyLoadBtn.addEventListener("click", function () {
+        const m = historyMonthInput ? historyMonthInput.value : "";
+        if (!m) {
+          Swal.fire("แจ้งเตือน", "กรุณาเลือกเดือนที่ต้องการดูประวัติ", "warning");
+          return;
+        }
+        renderShiftHistoryPivot(m);
+      });
+    }
+
+    // เมื่อ accordion ถูกเปิด ให้ render pivot ด้วย month ปัจจุบันทันที
+    const collapseEl = document.getElementById("collapseHistory");
+    if (collapseEl && !collapseEl.dataset.pivotBound) {
+      collapseEl.dataset.pivotBound = "1";
+      collapseEl.addEventListener("show.bs.collapse", function () {
+        const m = historyMonthInput ? historyMonthInput.value : "";
+        if (m && window.__shiftHistoryAllRows) {
+          renderShiftHistoryPivot(m);
+        }
       });
     }
 
