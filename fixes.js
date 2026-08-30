@@ -3,11 +3,13 @@
 
   
   function getWardName() {
-    return localStorage.getItem("WARD_NAME") || "หอสงฆ์อาพาธ";
+    // รองรับทั้ง key เก่า (WARD_NAME) และ key ใหม่ (APP_WARD_NAME)
+    return localStorage.getItem("APP_WARD_NAME") || localStorage.getItem("WARD_NAME") || "หอสงฆ์อาพาธ";
   }
 
   function getHospitalName() {
-    return localStorage.getItem("HOSPITAL_NAME") || "โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน";
+    // รองรับทั้ง key เก่า (HOSPITAL_NAME) และ key ใหม่ (APP_HOSP_NAME)
+    return localStorage.getItem("APP_HOSP_NAME") || localStorage.getItem("HOSPITAL_NAME") || "โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน";
   }
 
   window.openWardSystemConfigModal = async function () {
@@ -82,27 +84,82 @@
 
     if (!isConfigSaved || !formValues) return;
 
+    // บันทึกทั้ง key เก่าและ key ใหม่เพื่อความ backward-compatible
     localStorage.setItem("WARD_NAME", formValues.ward);
     localStorage.setItem("HOSPITAL_NAME", formValues.hospital);
+    localStorage.setItem("APP_WARD_NAME", formValues.ward);
+    localStorage.setItem("APP_HOSP_NAME", formValues.hospital);
     localStorage.setItem("GAS_API_URL", formValues.api);
     if (window.GASApi && typeof window.GASApi.setApiUrl === "function") {
       window.GASApi.setApiUrl(formValues.api);
     }
 
+    // ล้างแคชทั้งหมดเพื่อดึงข้อมูลจาก API ใหม่
     localStorage.removeItem("drug_master_cache");
     localStorage.removeItem("shift_count_history_cache");
     localStorage.removeItem("drug_stock_cache_for_shiftcount");
 
+    // บันทึกชื่อลง Google Sheets ด้วย (ถ้า API ใหม่พร้อมใช้งาน)
+    try {
+      await GASApi.saveSystemConfig({
+        password: "admin1234",
+        HospitalName: formValues.hospital,
+        WardName: formValues.ward
+      });
+    } catch (e) {
+      console.warn("Cannot sync config to remote sheet:", e);
+    }
+
+    const origin = window.location.origin;
+    const basePath = window.location.pathname.replace(/[^/]*$/, '');
+    const shareLink = origin + basePath + "dashboard.html?api=" + encodeURIComponent(formValues.api);
+
     await Swal.fire({
       icon: "success",
       title: "บันทึกการตั้งค่าสำเร็จ",
-      html: `อัปเดตข้อมูลเป็น <b>${escapeHtml(formValues.ward)}</b> (${escapeHtml(formValues.hospital)}) เรียบร้อยแล้ว<br><small class='text-muted'>ระบบจะรีเฟรชเพื่อโหลดข้อมูลจาก API ใหม่</small>`,
-      timer: 2000,
-      showConfirmButton: false
+      html: `<p class="mb-2">อัปเดตข้อมูลเป็น <b>${escapeHtml(formValues.ward)}</b> (${escapeHtml(formValues.hospital)}) เรียบร้อยแล้ว</p>` +
+        `<div class="p-2 bg-light border rounded text-start mt-2">` +
+        `<div class="small fw-bold text-primary mb-1"><i class="fas fa-share-nodes me-1"></i> ลิงก์แชร์ให้เครื่องอื่น:</div>` +
+        `<input type="text" class="form-control form-control-sm text-secondary mb-2" id="share-link-val" value="${escapeHtml(shareLink)}" readonly>` +
+        `<button type="button" class="btn btn-outline-primary btn-sm w-100" id="btn-copy-share-lnk"><i class="fas fa-copy me-1"></i> คัดลอกลิงก์</button>` +
+        `</div>`,
+      didOpen: () => {
+        const btn = document.getElementById('btn-copy-share-lnk');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            const inp = document.getElementById('share-link-val');
+            if (inp) { inp.select(); navigator.clipboard.writeText(inp.value); showToast("คัดลอกลิงก์เรียบร้อยแล้ว"); }
+          });
+        }
+      },
+      confirmButtonText: 'เสร็จสิ้น (รีโหลดหน้า)'
     });
 
     window.location.reload();
   };
+
+  // ตรวจ URL Parameter ?api=... สำหรับแชร์การตั้งค่า API ข้ามเครื่อง
+  (function checkApiQueryParam() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryApi = params.get("api") || params.get("apiUrl");
+      if (queryApi && queryApi.startsWith("http")) {
+        const existing = localStorage.getItem("GAS_API_URL");
+        if (existing !== queryApi.trim()) {
+          localStorage.setItem("GAS_API_URL", queryApi.trim());
+          localStorage.setItem("APP_WARD_NAME", "");
+          localStorage.setItem("APP_HOSP_NAME", "");
+          // ล้างแคชทั้งหมดเพื่อโหลดข้อมูลใหม่จาก API ใหม่
+          localStorage.removeItem("drug_master_cache");
+          localStorage.removeItem("shift_count_history_cache");
+          localStorage.removeItem("drug_stock_cache_for_shiftcount");
+        }
+        // ลบ query string ออกจาก URL โดยไม่รีโหลด
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    } catch (e) {}
+  })();
 
   if (!localStorage.getItem("GAS_API_URL")) {
     localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
@@ -320,133 +377,7 @@
     }
   }
 
-  
-  window.openWardSystemConfigModal = async function () {
-    const { value: password } = await Swal.fire({
-      title: 'ตั้งค่าย้ายวอร์ด / เชื่อมต่อ API',
-      html: '<p class="text-muted small mb-3">เฉพาะผู้ดูแลระบบ (Admin) กรุณาระบุรหัสผ่านเพื่อเข้าใช้งาน</p>',
-      input: 'password',
-      inputPlaceholder: 'กรอกรหัสผ่าน (admin1234)',
-      inputAttributes: {
-        autocapitalize: 'off',
-        autocorrect: 'off'
-      },
-      showCancelButton: true,
-      confirmButtonText: '<i class="fas fa-key me-1"></i> ยืนยันรหัสผ่าน',
-      cancelButtonText: 'ยกเลิก',
-      inputValidator: (value) => {
-        if (!value) {
-          return 'กรุณาระบุรหัสผ่าน';
-        }
-        if (value !== 'admin1234') {
-          return 'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง';
-        }
-      }
-    });
-
-    if (!password) return;
-
-    const currentApi = localStorage.getItem("GAS_API_URL") || DEFAULT_API_URL;
-    const currentWard = localStorage.getItem("APP_WARD_NAME") || "หอสงฆ์อาพาธ";
-    const currentHosp = localStorage.getItem("APP_HOSP_NAME") || "โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน";
-
-    const formHtml = '<div class="text-start">' +
-      '<div class="alert alert-info border-0 p-2 small mb-3">' +
-      '<i class="fas fa-circle-info me-1"></i> <b>การทำงาน:</b> เมื่อบันทึก ข้อมูลชื่อโรงพยาบาลและหอผู้ป่วยจะถูกอัปเดตลงชีตฐานข้อมูล และแสดงผลตรงกันทุกเครื่องทันที' +
-      '</div>' +
-      '<div class="mb-3">' +
-      '<label class="form-label small fw-bold text-dark mb-1">ชื่อโรงพยาบาล / องค์กร:</label>' +
-      '<input type="text" id="swal-hosp-name" class="form-control form-control-sm" value="' + escapeHtml(currentHosp) + '" placeholder="เช่น โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน" required>' +
-      '</div>' +
-      '<div class="mb-3">' +
-      '<label class="form-label small fw-bold text-dark mb-1">ชื่อหอผู้ป่วย / วอร์ด (Ward Name):</label>' +
-      '<input type="text" id="swal-ward-name" class="form-control form-control-sm" value="' + escapeHtml(currentWard) + '" placeholder="เช่น หอสงฆ์อาพาธ, หอผู้ป่วยพิเศษ ฯลฯ" required>' +
-      '</div>' +
-      '<div class="mb-3">' +
-      '<label class="form-label small fw-bold text-dark mb-1">Google Apps Script Web App API URL:</label>' +
-      '<input type="text" id="swal-api-url" class="form-control form-control-sm" value="' + escapeHtml(currentApi) + '" placeholder="https://script.google.com/macros/s/.../exec" required>' +
-      '<div class="form-text small" style="font-size: 0.72rem;">URL ของระบบคลังยาชีตใหม่ที่ได้จากการ Deploy Web App</div>' +
-      '</div>' +
-      '</div>';
-
-    const { value: formValues, isConfirmed } = await Swal.fire({
-      title: '<i class="fas fa-sliders text-primary me-2"></i>ตั้งค่าย้ายวอร์ด / เชื่อมต่อ API',
-      html: formHtml,
-      width: '600px',
-      showCancelButton: true,
-      confirmButtonText: '<i class="fas fa-save me-1"></i> บันทึกการตั้งค่า',
-      cancelButtonText: 'ยกเลิก',
-      focusConfirm: false,
-      preConfirm: () => {
-        const hosp = document.getElementById('swal-hosp-name').value.trim();
-        const ward = document.getElementById('swal-ward-name').value.trim();
-        const api = document.getElementById('swal-api-url').value.trim();
-        if (!hosp || !ward || !api) {
-          Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบทุกช่อง');
-          return false;
-        }
-        return { hosp, ward, api };
-      }
-    });
-
-    if (isConfirmed && formValues) {
-      showLoading(true);
-      try {
-        localStorage.setItem("GAS_API_URL", formValues.api);
-        localStorage.setItem("APP_HOSP_NAME", formValues.hosp);
-        localStorage.setItem("APP_WARD_NAME", formValues.ward);
-
-        try {
-          await GASApi.saveSystemConfig({
-            password: "admin1234",
-            HospitalName: formValues.hosp,
-            WardName: formValues.ward
-          });
-        } catch (saveErr) {
-          console.warn("Could not save to remote sheet config:", saveErr);
-        }
-        showLoading(false);
-
-        const origin = window.location.origin;
-        const path = window.location.pathname.replace(/[^/]*$/, '');
-        const shareLink = origin + path + "dashboard.html?api=" + encodeURIComponent(formValues.api);
-
-        await Swal.fire({
-          icon: 'success',
-          title: 'บันทึกการตั้งค่าสำเร็จ',
-          html: '<p class="mb-2">อัปเดตข้อมูลหน่วยงานและ API เรียบร้อยแล้ว</p>' +
-            '<div class="p-3 bg-light border rounded text-start mt-3">' +
-            '<div class="small fw-bold text-primary mb-1"><i class="fas fa-share-nodes me-1"></i> ลิงก์สำหรับส่งให้เครื่องอื่นๆ (เปิดแล้วเปลี่ยน API อัตโนมัติ):</div>' +
-            '<input type="text" class="form-control form-control-sm text-secondary mb-2" id="share-link-input-val" value="' + escapeHtml(shareLink) + '" readonly>' +
-            '<button type="button" class="btn btn-outline-primary btn-sm w-100" id="btn-copy-share-link">' +
-            '<i class="fas fa-copy me-1"></i> คัดลอกลิงก์ส่งต่อ' +
-            '</button>' +
-            '</div>',
-          didOpen: () => {
-            const btn = document.getElementById('btn-copy-share-link');
-            if (btn) {
-              btn.addEventListener('click', function () {
-                const inp = document.getElementById('share-link-input-val');
-                if (inp) {
-                  inp.select();
-                  navigator.clipboard.writeText(inp.value);
-                  showToast("คัดลอกลิงก์เรียบร้อยแล้ว");
-                }
-              });
-            }
-          },
-          confirmButtonText: 'เสร็จสิ้น (รีโหลดหน้า)'
-        });
-
-        window.location.reload();
-      } catch (err) {
-        showLoading(false);
-        Swal.fire("ข้อผิดพลาด", err.toString(), "error");
-      }
-    }
-  };
-
-  function renderNavbar(activePage) {
+    function renderNavbar(activePage) {
     const placeholder = document.getElementById("navbar-placeholder");
     if (!placeholder) return;
 
