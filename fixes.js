@@ -1,5 +1,5 @@
 (function () {
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzOITprKzWcOhvgl6ELltxJmhGEjCifJA0ZwdDgqba-gKTP1hswlcnRa1Lithqx6fIs/exec";
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
 
   
   function getWardName() {
