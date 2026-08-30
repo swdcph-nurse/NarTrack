@@ -1,5 +1,5 @@
 (function () {
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzOITprKzWcOhvgl6ELltxJmhGEjCifJA0ZwdDgqba-gKTP1hswlcnRa1Lithqx6fIs/exec";
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
 
   if (!localStorage.getItem("GAS_API_URL")) {
     localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
@@ -238,7 +238,7 @@
             </div>
             <div class="ward-context-pill">
               <i class="fas fa-hospital-user text-info"></i>
-              <div class="ward-context-pill__name">หอสงฆ์อาพาธ</div>
+              <div class="ward-context-pill__name"></div>
             </div>
           </a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
