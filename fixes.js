@@ -1,5 +1,108 @@
 (function () {
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbypv6apadYl2NzppPxDdrg1Bf2fIP49BHMOwz-TswtoXip1mwCyt1akWTjCgQO43ZQlpw/exec";
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzOITprKzWcOhvgl6ELltxJmhGEjCifJA0ZwdDgqba-gKTP1hswlcnRa1Lithqx6fIs/exec";
+
+  
+  function getWardName() {
+    return localStorage.getItem("WARD_NAME") || "หอสงฆ์อาพาธ";
+  }
+
+  function getHospitalName() {
+    return localStorage.getItem("HOSPITAL_NAME") || "โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน";
+  }
+
+  window.openWardSystemConfigModal = async function () {
+    const { value: password, isConfirmed } = await Swal.fire({
+      title: "ยืนยันสิทธิ์ผู้ดูแลระบบ",
+      html: "<div class='text-start text-secondary small mb-2'>กรุณากรอกรหัสผ่านผู้ดูแลระบบ (Admin Password) เพื่อเข้าสู่การตั้งค่าย้ายวอร์ดและ API</div>",
+      input: "password",
+      inputPlaceholder: "กรอกรหัสผ่าน (admin1234)",
+      showCancelButton: true,
+      confirmButtonText: "<i class='fas fa-unlock me-1'></i> เข้าสู่การตั้งค่า",
+      cancelButtonText: "ยกเลิก",
+      inputValidator: (val) => {
+        if (!val || val.trim() !== "admin1234") {
+          return "รหัสผ่านไม่ถูกต้อง (ต้องเป็น admin1234)";
+        }
+      }
+    });
+
+    if (!isConfirmed) return;
+
+    const currentWard = getWardName();
+    const currentHospital = getHospitalName();
+    const currentApi = localStorage.getItem("GAS_API_URL") || DEFAULT_API_URL;
+
+    const modalHtml = `
+      <div class="text-start">
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-dark mb-1"><i class="fas fa-hospital-user text-primary me-1"></i>ชื่อหอผู้ป่วย / หน่วยงาน <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="cfg-ward-name" value="${escapeHtml(currentWard)}" placeholder="เช่น หอสงฆ์อาพาธ, ICU, ศัลยกรรมชาย">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-dark mb-1"><i class="fas fa-hospital text-primary me-1"></i>ชื่อโรงพยาบาล <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="cfg-hospital-name" value="${escapeHtml(currentHospital)}" placeholder="เช่น โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-bold text-dark mb-1"><i class="fas fa-link text-primary me-1"></i>Google Apps Script Web App API URL <span class="text-danger">*</span></label>
+          <textarea class="form-control form-control-sm" id="cfg-api-url" rows="3" placeholder="https://script.google.com/macros/s/.../exec">${escapeHtml(currentApi)}</textarea>
+          <div class="form-text small" style="font-size: 0.72rem;">URL ของ Web App ที่ Deploy จาก Google Apps Script ของหน่วยงานใหม่</div>
+        </div>
+      </div>
+    `;
+
+    const { value: formValues, isConfirmed: isConfigSaved } = await Swal.fire({
+      title: "ตั้งค่าย้ายวอร์ดและ API ระบบ",
+      html: modalHtml,
+      width: "550px",
+      showCancelButton: true,
+      confirmButtonText: "<i class='fas fa-save me-1'></i> บันทึกการตั้งค่า",
+      cancelButtonText: "ยกเลิก",
+      focusConfirm: false,
+      preConfirm: () => {
+        const ward = document.getElementById("cfg-ward-name")?.value.trim();
+        const hospital = document.getElementById("cfg-hospital-name")?.value.trim();
+        const api = document.getElementById("cfg-api-url")?.value.trim();
+
+        if (!ward) {
+          Swal.showValidationMessage("กรุณาระบุชื่อหอผู้ป่วย");
+          return false;
+        }
+        if (!hospital) {
+          Swal.showValidationMessage("กรุณาระบุชื่อโรงพยาบาล");
+          return false;
+        }
+        if (!api || !api.startsWith("http")) {
+          Swal.showValidationMessage("กรุณาระบุ Web App API URL ให้ถูกต้อง");
+          return false;
+        }
+
+        return { ward, hospital, api };
+      }
+    });
+
+    if (!isConfigSaved || !formValues) return;
+
+    localStorage.setItem("WARD_NAME", formValues.ward);
+    localStorage.setItem("HOSPITAL_NAME", formValues.hospital);
+    localStorage.setItem("GAS_API_URL", formValues.api);
+    if (window.GASApi && typeof window.GASApi.setApiUrl === "function") {
+      window.GASApi.setApiUrl(formValues.api);
+    }
+
+    localStorage.removeItem("drug_master_cache");
+    localStorage.removeItem("shift_count_history_cache");
+    localStorage.removeItem("drug_stock_cache_for_shiftcount");
+
+    await Swal.fire({
+      icon: "success",
+      title: "บันทึกการตั้งค่าสำเร็จ",
+      html: `อัปเดตข้อมูลเป็น <b>${escapeHtml(formValues.ward)}</b> (${escapeHtml(formValues.hospital)}) เรียบร้อยแล้ว<br><small class='text-muted'>ระบบจะรีเฟรชเพื่อโหลดข้อมูลจาก API ใหม่</small>`,
+      timer: 2000,
+      showConfirmButton: false
+    });
+
+    window.location.reload();
+  };
 
   if (!localStorage.getItem("GAS_API_URL")) {
     localStorage.setItem("GAS_API_URL", DEFAULT_API_URL);
@@ -217,6 +320,132 @@
     }
   }
 
+  
+  window.openWardSystemConfigModal = async function () {
+    const { value: password } = await Swal.fire({
+      title: 'ตั้งค่าย้ายวอร์ด / เชื่อมต่อ API',
+      html: '<p class="text-muted small mb-3">เฉพาะผู้ดูแลระบบ (Admin) กรุณาระบุรหัสผ่านเพื่อเข้าใช้งาน</p>',
+      input: 'password',
+      inputPlaceholder: 'กรอกรหัสผ่าน (admin1234)',
+      inputAttributes: {
+        autocapitalize: 'off',
+        autocorrect: 'off'
+      },
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-key me-1"></i> ยืนยันรหัสผ่าน',
+      cancelButtonText: 'ยกเลิก',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'กรุณาระบุรหัสผ่าน';
+        }
+        if (value !== 'admin1234') {
+          return 'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง';
+        }
+      }
+    });
+
+    if (!password) return;
+
+    const currentApi = localStorage.getItem("GAS_API_URL") || DEFAULT_API_URL;
+    const currentWard = localStorage.getItem("APP_WARD_NAME") || "หอสงฆ์อาพาธ";
+    const currentHosp = localStorage.getItem("APP_HOSP_NAME") || "โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน";
+
+    const formHtml = '<div class="text-start">' +
+      '<div class="alert alert-info border-0 p-2 small mb-3">' +
+      '<i class="fas fa-circle-info me-1"></i> <b>การทำงาน:</b> เมื่อบันทึก ข้อมูลชื่อโรงพยาบาลและหอผู้ป่วยจะถูกอัปเดตลงชีตฐานข้อมูล และแสดงผลตรงกันทุกเครื่องทันที' +
+      '</div>' +
+      '<div class="mb-3">' +
+      '<label class="form-label small fw-bold text-dark mb-1">ชื่อโรงพยาบาล / องค์กร:</label>' +
+      '<input type="text" id="swal-hosp-name" class="form-control form-control-sm" value="' + escapeHtml(currentHosp) + '" placeholder="เช่น โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน" required>' +
+      '</div>' +
+      '<div class="mb-3">' +
+      '<label class="form-label small fw-bold text-dark mb-1">ชื่อหอผู้ป่วย / วอร์ด (Ward Name):</label>' +
+      '<input type="text" id="swal-ward-name" class="form-control form-control-sm" value="' + escapeHtml(currentWard) + '" placeholder="เช่น หอสงฆ์อาพาธ, หอผู้ป่วยพิเศษ ฯลฯ" required>' +
+      '</div>' +
+      '<div class="mb-3">' +
+      '<label class="form-label small fw-bold text-dark mb-1">Google Apps Script Web App API URL:</label>' +
+      '<input type="text" id="swal-api-url" class="form-control form-control-sm" value="' + escapeHtml(currentApi) + '" placeholder="https://script.google.com/macros/s/.../exec" required>' +
+      '<div class="form-text small" style="font-size: 0.72rem;">URL ของระบบคลังยาชีตใหม่ที่ได้จากการ Deploy Web App</div>' +
+      '</div>' +
+      '</div>';
+
+    const { value: formValues, isConfirmed } = await Swal.fire({
+      title: '<i class="fas fa-sliders text-primary me-2"></i>ตั้งค่าย้ายวอร์ด / เชื่อมต่อ API',
+      html: formHtml,
+      width: '600px',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-save me-1"></i> บันทึกการตั้งค่า',
+      cancelButtonText: 'ยกเลิก',
+      focusConfirm: false,
+      preConfirm: () => {
+        const hosp = document.getElementById('swal-hosp-name').value.trim();
+        const ward = document.getElementById('swal-ward-name').value.trim();
+        const api = document.getElementById('swal-api-url').value.trim();
+        if (!hosp || !ward || !api) {
+          Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+          return false;
+        }
+        return { hosp, ward, api };
+      }
+    });
+
+    if (isConfirmed && formValues) {
+      showLoading(true);
+      try {
+        localStorage.setItem("GAS_API_URL", formValues.api);
+        localStorage.setItem("APP_HOSP_NAME", formValues.hosp);
+        localStorage.setItem("APP_WARD_NAME", formValues.ward);
+
+        try {
+          await GASApi.saveSystemConfig({
+            password: "admin1234",
+            HospitalName: formValues.hosp,
+            WardName: formValues.ward
+          });
+        } catch (saveErr) {
+          console.warn("Could not save to remote sheet config:", saveErr);
+        }
+        showLoading(false);
+
+        const origin = window.location.origin;
+        const path = window.location.pathname.replace(/[^/]*$/, '');
+        const shareLink = origin + path + "dashboard.html?api=" + encodeURIComponent(formValues.api);
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'บันทึกการตั้งค่าสำเร็จ',
+          html: '<p class="mb-2">อัปเดตข้อมูลหน่วยงานและ API เรียบร้อยแล้ว</p>' +
+            '<div class="p-3 bg-light border rounded text-start mt-3">' +
+            '<div class="small fw-bold text-primary mb-1"><i class="fas fa-share-nodes me-1"></i> ลิงก์สำหรับส่งให้เครื่องอื่นๆ (เปิดแล้วเปลี่ยน API อัตโนมัติ):</div>' +
+            '<input type="text" class="form-control form-control-sm text-secondary mb-2" id="share-link-input-val" value="' + escapeHtml(shareLink) + '" readonly>' +
+            '<button type="button" class="btn btn-outline-primary btn-sm w-100" id="btn-copy-share-link">' +
+            '<i class="fas fa-copy me-1"></i> คัดลอกลิงก์ส่งต่อ' +
+            '</button>' +
+            '</div>',
+          didOpen: () => {
+            const btn = document.getElementById('btn-copy-share-link');
+            if (btn) {
+              btn.addEventListener('click', function () {
+                const inp = document.getElementById('share-link-input-val');
+                if (inp) {
+                  inp.select();
+                  navigator.clipboard.writeText(inp.value);
+                  showToast("คัดลอกลิงก์เรียบร้อยแล้ว");
+                }
+              });
+            }
+          },
+          confirmButtonText: 'เสร็จสิ้น (รีโหลดหน้า)'
+        });
+
+        window.location.reload();
+      } catch (err) {
+        showLoading(false);
+        Swal.fire("ข้อผิดพลาด", err.toString(), "error");
+      }
+    }
+  };
+
   function renderNavbar(activePage) {
     const placeholder = document.getElementById("navbar-placeholder");
     if (!placeholder) return;
@@ -224,6 +453,7 @@
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const userName = user.name || "เจ้าหน้าที่";
     const userRole = user.role || "พยาบาลประจำการ";
+    const wardName = getWardName();
 
     placeholder.innerHTML = `
       <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
@@ -238,7 +468,7 @@
             </div>
             <div class="ward-context-pill">
               <i class="fas fa-hospital-user text-info"></i>
-              <div class="ward-context-pill__name"></div>
+              <div class="ward-context-pill__name">${escapeHtml(wardName)}</div>
             </div>
           </a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -261,8 +491,12 @@
                   <div class="user-role">${escapeHtml(userRole)}</div>
                 </div>
               </div>
-              <button class="btn btn-outline-light btn-sm" id="btn-logout">
-                <i class="fas fa-right-from-bracket"></i>
+              <button class="btn btn-outline-info btn-sm w-100 mb-2 py-2" id="btn-system-ward-config" style="border-color: rgba(6, 182, 212, 0.4); color: #38bdf8;">
+                <i class="fas fa-sliders me-2"></i>
+                <span>ตั้งค่าวอร์ด / API</span>
+              </button>
+              <button class="btn btn-outline-light btn-sm w-100 py-2" id="btn-logout">
+                <i class="fas fa-right-from-bracket me-2"></i>
                 <span>ออกจากระบบ</span>
               </button>
             </div>
@@ -274,6 +508,14 @@
     const activeLink = document.getElementById(activePage);
     if (activeLink) {
       activeLink.classList.add("active");
+    }
+
+    const configBtn = document.getElementById("btn-system-ward-config");
+    if (configBtn && !configBtn.dataset.bound) {
+      configBtn.dataset.bound = "1";
+      configBtn.addEventListener("click", function () {
+        window.openWardSystemConfigModal();
+      });
     }
 
     const logoutBtn = document.getElementById("btn-logout");
@@ -1099,6 +1341,10 @@
 
   window.initReportPage = async function () {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const pdfHosp = document.getElementById("pdf-hospital-name");
+    if (pdfHosp) pdfHosp.innerText = getHospitalName();
+    const pdfWard = document.getElementById("pdf-ward-name");
+    if (pdfWard) pdfWard.innerText = "หอผู้ป่วย: " + getWardName();
     const printDateEl = document.getElementById("pdf-print-date");
     if (printDateEl) {
       printDateEl.innerText = "วันที่พิมพ์: " + new Date().toLocaleDateString("th-TH") + " " + new Date().toLocaleTimeString("th-TH");

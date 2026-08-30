@@ -58,9 +58,12 @@
       </button>
     </form>
 
-    <div class="text-center mt-3">
-      <button type="button" class="btn btn-link btn-sm text-decoration-none" id="btn-init-db">
-        <i class="fas fa-database me-1"></i> เริ่มต้นตารางฐานข้อมูลใหม่ (Initialize DB)
+    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+      <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" onclick="window.openWardSystemConfigModal()">
+        <i class="fas fa-sliders me-1"></i> ตั้งค่าย้ายวอร์ด / API (รหัส admin1234)
+      </button>
+      <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none p-0" id="btn-init-db">
+        <i class="fas fa-database me-1"></i> Init DB
       </button>
     </div>
   </div>

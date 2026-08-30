@@ -31,9 +31,14 @@
         <h2 class="mb-1 text-primary"><i class="fas fa-sliders me-2"></i>ตั้งค่ารายการและ Stock Ward</h2>
         <p class="text-secondary mb-0">กำหนดรายชื่อยาและจำนวนสต็อกมาตรฐานประจำหอผู้ป่วย (Stock Ward) เพื่อใช้เป็นฐานตรวจสอบความถูกต้องประจำเวร</p>
       </div>
-      <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#drugModal" id="btn-add-drug">
-        <i class="fas fa-plus me-1"></i> เพิ่มรายการยา
-      </button>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" id="btn-page-ward-config" onclick="window.openWardSystemConfigModal()">
+          <i class="fas fa-sliders me-1"></i> ตั้งค่าย้ายวอร์ด / API (Admin)
+        </button>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#drugModal" id="btn-add-drug">
+          <i class="fas fa-plus me-1"></i> เพิ่มรายการยา
+        </button>
+      </div>
     </div>
 
     <!-- Drug Master Data Table -->
