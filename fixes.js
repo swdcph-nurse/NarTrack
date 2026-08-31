@@ -796,7 +796,7 @@
       drugNameSelect.addEventListener("change", syncReceiveDrugFieldsFromSelect);
     }
 
-    const receiveForm = document.getElementById("receive-form");
+    const receiveForm = document.getElementById("add-stock-form");
     if (receiveForm && !receiveForm.dataset.bound) {
       receiveForm.dataset.bound = "1";
       receiveForm.addEventListener("submit", async function (e) {
@@ -806,9 +806,9 @@
         const drugName = document.getElementById("drug-name-input")?.selectedOptions?.[0]?.dataset?.name || "";
         const strength = document.getElementById("drug-strength-input")?.value || "";
         const unit = document.getElementById("drug-unit-input")?.value || "";
-        const lot = (document.getElementById("drug-lot-input")?.value || "").trim();
-        const expiryDate = document.getElementById("drug-exp-input")?.value;
-        const qty = parseFloat(document.getElementById("drug-qty-input")?.value || "0");
+        const lot = (document.getElementById("lot-input")?.value || "").trim();
+        const expiryDate = document.getElementById("expiry-date-input")?.value;
+        const qty = parseFloat(document.getElementById("qty-receive-input")?.value || "0");
         const receiveDate = document.getElementById("receive-date-input")?.value;
         const createdBy = (document.getElementById("created-by-input")?.value || "").trim();
 
