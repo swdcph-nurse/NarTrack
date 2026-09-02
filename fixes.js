@@ -796,7 +796,7 @@
       drugNameSelect.addEventListener("change", syncReceiveDrugFieldsFromSelect);
     }
 
-    const receiveForm = document.getElementById("add-stock-form");
+    const receiveForm = document.getElementById("receive-form");
     if (receiveForm && !receiveForm.dataset.bound) {
       receiveForm.dataset.bound = "1";
       receiveForm.addEventListener("submit", async function (e) {
@@ -806,9 +806,9 @@
         const drugName = document.getElementById("drug-name-input")?.selectedOptions?.[0]?.dataset?.name || "";
         const strength = document.getElementById("drug-strength-input")?.value || "";
         const unit = document.getElementById("drug-unit-input")?.value || "";
-        const lot = (document.getElementById("lot-input")?.value || "").trim();
-        const expiryDate = document.getElementById("expiry-date-input")?.value;
-        const qty = parseFloat(document.getElementById("qty-receive-input")?.value || "0");
+        const lot = (document.getElementById("drug-lot-input")?.value || "").trim();
+        const expiryDate = document.getElementById("drug-exp-input")?.value;
+        const qty = parseFloat(document.getElementById("drug-qty-input")?.value || "0");
         const receiveDate = document.getElementById("receive-date-input")?.value;
         const createdBy = (document.getElementById("created-by-input")?.value || "").trim();
 
@@ -1064,7 +1064,7 @@
         if (m.DrugID) {
           const dName = m.DrugName || "-";
           const dStr = m.Strength ? " (" + m.Strength + ")" : "";
-          drugMap.set(String(m.DrugID), { id: String(m.DrugID), name: dName + dStr });
+          drugMap.set(String(m.DrugID), { id: String(m.DrugID), name: dName + dStr, stockWard: m.StockWard || 0 });
         }
       });
     }
@@ -1072,7 +1072,7 @@
     rows.forEach(item => {
       const dId = String(item.DrugID || item.DrugName || "").trim();
       if (dId && !drugMap.has(dId)) {
-        drugMap.set(dId, { id: dId, name: item.DrugName || dId });
+        drugMap.set(dId, { id: dId, name: item.DrugName || dId, stockWard: 0 });
       }
     });
 
@@ -1093,7 +1093,9 @@
 
       const sKey = normShift(item.Shift);
       const dId = String(item.DrugID || item.DrugName || "").trim();
-      const val = item.AmpRemain != null ? item.AmpRemain : (item.ExpectedTotal != null ? item.ExpectedTotal : "");
+      const valRemain = item.AmpRemain != null ? item.AmpRemain : "";
+      const valEmpty = item.EmptyAmp != null ? item.EmptyAmp : "";
+      const val = (valRemain !== "" || valEmpty !== "") ? valRemain + "/" + valEmpty : "";
       
       countMap.set(dayNum + "_" + sKey + "_" + dId, val);
       if (item.DrugName) {
@@ -1131,8 +1133,9 @@
           });
         }
 
+        const drugLabel = escapeHtml(drug.name) + (drug.stockWard != null ? ' <span class="text-muted" style="font-size: 0.65rem;">(Stock: ' + drug.stockWard + ')</span>' : '');
         drugRowsHtml += '<tr>' +
-          '<td class="drug-col border-end text-truncate" title="' + escapeHtml(drug.name) + '">' + escapeHtml(drug.name) + '</td>' +
+          '<td class="drug-col border-end text-truncate" title="' + escapeHtml(drug.name) + '">' + drugLabel + '</td>' +
           cellsHtml +
           '</tr>';
       });
@@ -1184,7 +1187,8 @@
       tableBottom = buildHalfMonthTable(splitDay + 1, daysInMonth, "ครึ่งหลังของเดือน");
     }
 
-    contentDiv.innerHTML = cleanHtmlMarkup('<div>' + tableTop + tableBottom + '</div>');
+    const noteHtml = '<div class="text-muted small mt-2"><b>หมายเหตุ:</b> ผลการตรวจนับประจำเวรแต่ละรายการแสดงเป็น จำนวน Amp ดี / จำนวน Ampเปล่า</div>';
+    contentDiv.innerHTML = cleanHtmlMarkup('<div>' + tableTop + tableBottom + noteHtml + '</div>');
   };
 
   window.renderDisburseReportPreview = function (data, drugNameLabel, startDate, endDate) {
@@ -1797,14 +1801,14 @@
         if (m.DrugID) {
           const dName = m.DrugName || "-";
           const dStr = m.Strength ? " (" + m.Strength + ")" : "";
-          drugMap.set(String(m.DrugID), { id: String(m.DrugID), name: dName + dStr });
+          drugMap.set(String(m.DrugID), { id: String(m.DrugID), name: dName + dStr, stockWard: m.StockWard || 0 });
         }
       });
     }
     rows.forEach(item => {
       const dId = String(item.DrugID || item.DrugName || "").trim();
       if (dId && !drugMap.has(dId)) {
-        drugMap.set(dId, { id: dId, name: item.DrugName || dId });
+        drugMap.set(dId, { id: dId, name: item.DrugName || dId, stockWard: 0 });
       }
     });
 
@@ -1829,8 +1833,10 @@
 
       const sKey = normShift(item.Shift);
       const dId = String(item.DrugID || item.DrugName || "").trim();
-      // แสดง AmpRemain (แอมป์ดี) เป็นค่าหลัก เหมือนรายงาน
-      const val = item.AmpRemain != null ? item.AmpRemain : (item.ExpectedTotal != null ? item.ExpectedTotal : "");
+      // แสดง AmpRemain (แอมป์ดี) / EmptyAmp (แอมป์เปล่า)
+      const valRemain = item.AmpRemain != null ? item.AmpRemain : "";
+      const valEmpty = item.EmptyAmp != null ? item.EmptyAmp : "";
+      const val = (valRemain !== "" || valEmpty !== "") ? valRemain + "/" + valEmpty : "";
 
       countMap.set(dayNum + "_" + sKey + "_" + dId, val);
       if (item.DrugName) {
@@ -1896,8 +1902,9 @@
           });
         }
 
+        const drugLabel = escapeHtml(drug.name) + (drug.stockWard != null ? ' <span class="text-muted" style="font-size: 0.65rem;">(Stock: ' + drug.stockWard + ')</span>' : '');
         drugRowsHtml += '<tr>' +
-          '<td class="drug-col border-end text-truncate" title="' + escapeHtml(drug.name) + '">' + escapeHtml(drug.name) + '</td>' +
+          '<td class="drug-col border-end text-truncate" title="' + escapeHtml(drug.name) + '">' + drugLabel + '</td>' +
           cellsHtml +
           '</tr>';
       });
@@ -1920,7 +1927,7 @@
       return '<div class="mb-3">' +
         '<div class="d-flex justify-content-between align-items-center mb-1">' +
         '<span class="badge bg-dark px-2 py-1" style="font-size: 0.72rem;">ช่วงที่: ' + label + ' (วันที่ ' + startDay + ' - ' + endDay + ')</span>' +
-        '<span class="text-muted small" style="font-size: 0.7rem;"><span class="badge bg-secondary me-1">ด</span>=ดึก &nbsp; <span class="badge bg-warning text-dark me-1">ช</span>=เช้า &nbsp; <span class="badge bg-info text-dark me-1">บ</span>=บ่าย &nbsp; <span class="badge bg-success-subtle text-success border me-1">&#x2713;</span>=ครบถ้วน &nbsp; <span class="badge bg-danger-subtle text-danger border me-1">&#x2717;</span>=ไม่ตรง</span>' +
+        '<span class="text-muted small" style="font-size: 0.7rem;"><span class="badge bg-secondary me-1">ด</span>=ดึก &nbsp; <span class="badge bg-warning text-dark me-1">ช</span>=เช้า &nbsp; <span class="badge bg-info text-dark me-1">บ</span>=บ่าย &nbsp; <span class="badge bg-light text-dark border me-1">ดี/เปล่า</span>=Amp ดี/Amp เปล่า &nbsp; <span class="badge bg-success-subtle text-success border me-1">&#x2713;</span>=ครบถ้วน &nbsp; <span class="badge bg-danger-subtle text-danger border me-1">&#x2717;</span>=ไม่ตรง</span>' +
         '</div>' +
         '<div class="table-responsive">' +
         '<table class="table table-bordered table-sm w-100 report-table-compact mb-0" style="border: 1.5px solid #64748b;">' +
@@ -1955,7 +1962,8 @@
       '<div class="text-muted small">เซลล์สีเขียว = ครบถ้วน | สีแดง = ไม่ตรง | คลิกช่องสีแดงเพื่อดูเหตุผล</div>' +
       '</div>';
 
-    container.innerHTML = cleanHtmlMarkup(headerHtml + '<div>' + tableTop + tableBottom + '</div>');
+    const noteHtml = '<div class="text-muted small mt-2"><b>หมายเหตุ:</b> ผลการตรวจนับประจำเวรแต่ละรายการแสดงเป็น จำนวน Amp ดี / จำนวน Ampเปล่า</div>';
+    container.innerHTML = cleanHtmlMarkup(headerHtml + '<div>' + tableTop + tableBottom + noteHtml + '</div>');
 
     container.querySelectorAll(".shift-history-mismatch-cell").forEach(cell => {
       const showMismatchReason = () => {
